@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // Article root directory (local — no external fetches)
 const ARTICLES_DIR = 'articles';
 
@@ -8,6 +9,9 @@ const ARTICLE_IDS = ['beauty-of-interstellar', 'am-radio', 'voltage-divider-expl
 const FEATURED_ARTICLE_IDS = ['beauty-of-interstellar', 'am-radio'];
 
 // Global articles data
+=======
+// Global articles datas
+>>>>>>> e5ce4a4d6485cf01665831241ff806eb23cc8ee9
 let allArticles = [];
 let currentFilter = null;
 
@@ -473,6 +477,7 @@ function setActiveNav() {
 
 // Initialize based on page
 document.addEventListener('DOMContentLoaded', function() {
+<<<<<<< HEAD
     loadPartials().then(() => {
         if (window.location.pathname.includes('article.html')) {
             loadArticle();
@@ -483,3 +488,13 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Error loading page partials:', err);
     });
 });
+=======
+    initializeSearch();
+    
+    if (window.location.pathname.includes('article.html')) {
+        loadArticle();
+    } else {
+        loadArticles();
+    }
+});
+>>>>>>> e5ce4a4d6485cf01665831241ff806eb23cc8ee9
