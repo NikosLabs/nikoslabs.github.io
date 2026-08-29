@@ -4,27 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Article - Niko's Lab</title>
+    <link rel="icon" href="/favicon.ico">
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="lib/marked.min.js"></script>
+    <script src="lib/mathjax.js"></script>
 </head>
 <body>
-    <header class="site-header">
-        <nav class="navbar">
-            <div class="container navbar-content">
-                <div class="logo">Niko's Lab</div>
-                <div class="search-container">
-                    <input type="text" id="search-input" class="search-box" placeholder="Search articles or tags...">
-                    <div id="search-results-dropdown" class="search-results-dropdown"></div>
-                </div>
-                <ul class="nav-links">
-                    <li><a href="index.html">Home</a></li>
-                    <li><a href="#about">About</a></li>
-                    <li><a href="https://github.com/DemodulatedWave">GitHub</a></li>
-                </ul>
-            </div>
-        </nav>
-    </header>
+    <div id="site-header-placeholder"></div>
 
     <main>
         <div class="container">
@@ -34,6 +20,7 @@
                 <div class="article-header">
                     <h1 id="article-title">Loading...</h1>
                     <p class="article-meta">Published: <span id="article-date">—</span></p>
+                    <img id="article-image" class="article-image" alt="" src="">
                     <div id="article-tags" class="article-tags"></div>
                 </div>
                 <div id="article-content" class="article-content">
@@ -43,11 +30,7 @@
         </div>
     </main>
 
-    <footer class="site-footer">
-        <div class="container">
-            <p>&copy; 2026 Niko's Lab All rights reserved.</p>
-        </div>
-    </footer>
+    <div id="site-footer-placeholder"></div>
 
     <script src="script.js"></script>
 </body>

@@ -4,51 +4,48 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Niko's Lab: Electronics & Projects</title>
+    <link rel="icon" href="/favicon.ico">
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
-    <header class="site-header">
-        <nav class="navbar">
-            <div class="container navbar-content">
-                <div class="logo">Niko's Lab</div>
-                <div class="search-container">
-                    <input type="text" id="search-input" class="search-box" placeholder="Search articles or tags...">
-                    <div id="search-results-dropdown" class="search-results-dropdown"></div>
-                </div>
-                <ul class="nav-links">
-                    <li><a href="index.html" class="active">Home</a></li>
-                    <li><a href="#about">About</a></li>
-                    <li><a href="https://github.com/DemodulatedWave">GitHub</a></li>
-                </ul>
-            </div>
-        </nav>
-    </header>
+    <div id="site-header-placeholder"></div>
 
     <main>
         <div class="container">
-            
-                <img src="hq720.jpg" alt="Banner" class="hero-banner">
             <section class="hero">
                 <h1>Welcome to Niko's Lab</h1>
-                <p>Hello, I'm Niko! This is my personal blog where I want to share cool projects I do, lessons, tutorials, and fascinating tech news!</p>
+                <p>Hello, I'm Niko! This is my personal blog where I will share cool projects , lessons, tutorials, and fascinating tech news!<br><br>
+                    I'm fascinated with how everything around us works on the deep down level; I'm learning something new every day, and I also encourage you to do the same!
+                <br><br>This is the new and improved version of the old blog, brought to you by github pages this time.
+                </p>
             </section>
 
             <section class="articles">
-                <h2>Latest Articles</h2>
-                <div id="articles-list" class="articles-grid">
-                    <!-- Articles will be loaded here -->
+                <h2>Featured Articles</h2>
+                <div class="articles-layout">
+                    <div id="featured-articles" class="articles-grid">
+                        <!-- Featured articles will be loaded here -->
+                    </div>
+                    <aside class="notices-frame">
+                        <h3>Notices</h3>
+                        <ul class="notices-list">
+                            <li class="notice-item">Coming soon...</li>
+                            <li class="notice-item">Stay tuned for updates</li>
+                        </ul>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="all-articles">
+                <h2>All Articles</h2>
+                <div id="all-articles-list" class="articles-grid">
+                    <!-- All articles will be loaded here -->
                 </div>
             </section>
         </div>
     </main>
 
-    <footer class="site-footer">
-        <div class="container">
-            <p>&copy; 2026 Niko's Lab All rights reserved.</p>
-        </div>
-    </footer>
+    <div id="site-footer-placeholder"></div>
 
     <script src="script.js"></script>
 </body>

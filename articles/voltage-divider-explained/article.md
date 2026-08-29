@@ -2,6 +2,9 @@
 title: Understanding Voltage Dividers
 date: 2026-07-20
 author: DemodulatedWave
+tags: Circuits, Analog, Electronics, Theory
+description: Deep dive into voltage divider circuits, calculations, and practical applications in analog signal conditioning.
+image: assets/placeholder.jpg
 ---
 
 # Understanding Voltage Dividers

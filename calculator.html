@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator - Niko's Lab</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="site-header-placeholder"></div>
+
+    <main>
+        <div class="container">
+            <a href="index.html" class="back-button">← Back to Home</a>
+
+            <section class="tool-page">
+                <h2>Calculator</h2>
+                <div class="calculator">
+                    <div class="calc-display">
+                        <div id="calc-history" class="calc-history"></div>
+                        <div id="calc-output" class="calc-output">0</div>
+                    </div>
+                    <div class="calc-keys">
+                        <button class="calc-btn operator" data-action="clear">C</button>
+                        <button class="calc-btn operator" data-action="backspace">⌫</button>
+                        <button class="calc-btn operator" data-action="percent">%</button>
+                        <button class="calc-btn operator" data-action="operator">÷</button>
+
+                        <button class="calc-btn" data-action="digit">7</button>
+                        <button class="calc-btn" data-action="digit">8</button>
+                        <button class="calc-btn" data-action="digit">9</button>
+                        <button class="calc-btn operator" data-action="operator">×</button>
+
+                        <button class="calc-btn" data-action="digit">4</button>
+                        <button class="calc-btn" data-action="digit">5</button>
+                        <button class="calc-btn" data-action="digit">6</button>
+                        <button class="calc-btn operator" data-action="operator">−</button>
+
+                        <button class="calc-btn" data-action="digit">1</button>
+                        <button class="calc-btn" data-action="digit">2</button>
+                        <button class="calc-btn" data-action="digit">3</button>
+                        <button class="calc-btn operator" data-action="operator">+</button>
+
+                        <button class="calc-btn zero" data-action="digit">0</button>
+                        <button class="calc-btn" data-action="decimal">.</button>
+                        <button class="calc-btn equals" data-action="equals">=</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <div id="site-footer-placeholder"></div>
+
+    <script src="script.js"></script>
+    <script>
+        (function() {
+            const output = document.getElementById('calc-output');
+            const history = document.getElementById('calc-history');
+            const keys = document.querySelector('.calc-keys');
+
+            if (!output || !history || !keys) return;
+
+            let currentOperand = '0';
+            let previousOperand = '';
+            let operation = undefined;
+            let resetScreen = false;
+
+            function updateDisplay() {
+                output.textContent = currentOperand;
+                history.textContent = previousOperand + (operation ? ' ' + operation : '');
+            }
+
+            function appendNumber(number) {
+                if (currentOperand === '0' || resetScreen) {
+                    currentOperand = number;
+                    resetScreen = false;
+                } else {
+                    currentOperand += number;
+                }
+            }
+
+            function chooseOperation(op) {
+                if (operation !== undefined) evaluate();
+                previousOperand = currentOperand;
+                operation = op;
+                resetScreen = true;
+            }
+
+            function evaluate() {
+                let computation;
+                const prev = parseFloat(previousOperand);
+                const current = parseFloat(currentOperand);
+                if (isNaN(prev) || isNaN(current)) return;
+
+                switch (operation) {
+                    case '+': computation = prev + current; break;
+                    case '−': computation = prev - current; break;
+                    case '×': computation = prev * current; break;
+                    case '÷':
+                        if (current === 0) { alert('Cannot divide by zero'); return; }
+                        computation = prev / current;
+                        break;
+                    default: return;
+                }
+
+                currentOperand = formatResult(computation);
+                operation = undefined;
+                previousOperand = '';
+            }
+
+            function formatResult(num) {
+                const str = String(num);
+                if (str.length > 12) {
+                    const parts = str.split('.');
+                    if (parts[1] && parts[1].length > 6) {
+                        return parseFloat(num.toPrecision(12)).toString();
+                    }
+                }
+                return str;
+            }
+
+            function clearAll() {
+                currentOperand = '0';
+                previousOperand = '';
+                operation = undefined;
+            }
+
+            function backspace() {
+                if (resetScreen) {
+                    currentOperand = '0';
+                    resetScreen = false;
+                    return;
+                }
+                if (currentOperand.length <= 1 || (currentOperand.length === 2 && currentOperand.startsWith('-'))) {
+                    currentOperand = '0';
+                } else {
+                    currentOperand = currentOperand.slice(0, -1);
+                }
+            }
+
+            function percent() {
+                if (operation === undefined || operation === null) {
+                    currentOperand = formatResult(parseFloat(currentOperand) / 100);
+                } else {
+                    const prev = parseFloat(previousOperand);
+                    currentOperand = formatResult(prev * parseFloat(currentOperand) / 100);
+                }
+            }
+
+            function appendDecimal() {
+                if (resetScreen) {
+                    currentOperand = '0.';
+                    resetScreen = false;
+                    return;
+                }
+                if (!currentOperand.includes('.')) {
+                    currentOperand += '.';
+                }
+            }
+
+            keys.addEventListener('click', function(e) {
+                const target = e.target;
+                if (!target.matches('button')) return;
+
+                const action = target.dataset.action;
+
+                switch (action) {
+                    case 'digit': appendNumber(target.textContent); break;
+                    case 'decimal': appendDecimal(); break;
+                    case 'operator': chooseOperation(target.textContent); break;
+                    case 'equals':
+                        evaluate();
+                        resetScreen = true;
+                        break;
+                    case 'clear': clearAll(); break;
+                    case 'backspace': backspace(); break;
+                    case 'percent': percent(); break;
+                }
+
+                updateDisplay();
+            });
+
+            document.addEventListener('keydown', function(e) {
+                const keyMap = {
+                    '0': 'digit', '1': 'digit', '2': 'digit', '3': 'digit', '4': 'digit',
+                    '5': 'digit', '6': 'digit', '7': 'digit', '8': 'digit', '9': 'digit',
+                    '+': 'operator', '-': 'operator', '*': 'operator', '/': 'operator',
+                    '.': 'decimal',
+                    'Enter': 'equals', '=': 'equals', 'Escape': 'clear',
+                    'Backspace': 'backspace', '%': 'percent'
+                };
+                const operatorMap = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+                if (e.target !== output && e.target !== keys) {
+                    const v = keyMap[e.key];
+                    if (v) {
+                        e.preventDefault();
+                        if (v === 'digit') appendNumber(e.key);
+                        else if (v === 'decimal') appendDecimal();
+                        else if (v === 'operator') chooseOperation(operatorMap[e.key]);
+                        else if (v === 'equals') { evaluate(); resetScreen = true; }
+                        else if (v === 'clear') clearAll();
+                        else if (v === 'backspace') backspace();
+                        else if (v === 'percent') percent();
+                        updateDisplay();
+                    }
+                }
+            });
+
+            updateDisplay();
+        })();
+    </script>
+</body>
+</html>

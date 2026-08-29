@@ -1,51 +1,193 @@
+// Article root directory (local — no external fetches)
+const ARTICLES_DIR = 'articles';
+
+// Published article IDs — add a new ID here whenever you publish a post
+const ARTICLE_IDS = ['beauty-of-interstellar', 'am-radio', 'voltage-divider-explained'];
+
+// Featured article IDs — shown in the "Featured Articles" section (subset of ARTICLE_IDS)
+const FEATURED_ARTICLE_IDS = ['beauty-of-interstellar', 'am-radio'];
+
 // Global articles data
 let allArticles = [];
 let currentFilter = null;
 
-// Load articles list on homepage
+// Parse YAML-like frontmatter and markdown content
+function parseFrontmatter(markdown) {
+    // Normalize line endings (\r\n and \r → \n) so the regex works cross-platform
+    markdown = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    const frontmatterMatch = markdown.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+    let content = markdown;
+    let metadata = {};
+
+    if (frontmatterMatch) {
+        const frontmatter = frontmatterMatch[1];
+        content = frontmatterMatch[2];
+
+        frontmatter.split('\n').forEach(line => {
+            const [key, ...valueParts] = line.split(':');
+            if (key && valueParts.length > 0) {
+                metadata[key.trim()] = valueParts.join(':').trim().replace(/^['"]|['"]$/g, '');
+            }
+        });
+    }
+
+    return { metadata, content };
+}
+
+// Parse a comma-separated tags string into an array
+function parseTags(tagsStr) {
+    if (!tagsStr) return [];
+    return tagsStr.split(',').map(t => t.trim()).filter(t => t);
+}
+
+// Map a tag name to a difficulty-based CSS class
+function getTagClass(tag) {
+    switch (tag.toLowerCase()) {
+        case 'easy':   return 'tag-easy';
+        case 'intermediate': return 'tag-intermediate';
+        case 'expert': return 'tag-expert';
+        default:       return '';
+    }
+}
+
+// Render tag spans — shows at most `limit` tags; the remaining hidden tags
+// are collapsed into a "+X More" pill that links to the article page
+function renderTags(tags, articleId, limit = 5) {
+    if (!tags || tags.length === 0) return '';
+
+    if (tags.length <= limit) {
+        return tags.map(tag =>
+            `<span class="tag ${getTagClass(tag)}" onclick="filterByTag('${tag}', event)">${tag}</span>`
+        ).join('');
+    }
+
+    const visible = tags.slice(0, limit);
+    const remaining = tags.length - limit;
+
+    let html = visible.map(tag =>
+        `<span class="tag ${getTagClass(tag)}" onclick="filterByTag('${tag}', event)">${tag}</span>`
+    ).join('');
+
+    html += `<span class="tag tag-more" onclick="window.location='article.html?id=${articleId}'">+${remaining} More</span>`;
+
+    return html;
+}
+
+// Generate a basic excerpt from markdown content when no description is set
+function generateExcerpt(content) {
+    let text = content
+        .replace(/^#.*$/gm, '')
+        .replace(/!\[.*?\]\(.*?\)/g, '')
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .replace(/`{3}[\s\S]*?`{3}/g, '')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/_([^_]+)_/g, '$1')
+        .replace(/^\s*[-*+]\s+/gm, '')
+        .replace(/\n{2,}/g, ' ')
+        .trim();
+    return text.substring(0, 160) + (text.length > 160 ? '...' : '');
+}
+
+// Load articles list on homepage (metadata parsed from markdown frontmatter)
 async function loadArticles() {
     try {
-        const response = await fetch('articles/index.json');
-        if (!response.ok) throw new Error('Could not load articles');
-        
-        const data = await response.json();
-        allArticles = data.articles;
-        
-        const articlesList = document.getElementById('articles-list');
-        if (!articlesList) return;
-        
+        // Fetch each article's markdown to extract frontmatter metadata
+        const articlesPromises = ARTICLE_IDS.map(async id => {
+            try {
+                const mdUrl = `${ARTICLES_DIR}/${id}/article.md`;
+                const resp = await fetch(mdUrl);
+                if (!resp.ok) throw new Error(`Could not load ${id}`);
+                const markdown = await resp.text();
+
+                const { metadata, content } = parseFrontmatter(markdown);
+                const tags = parseTags(metadata.tags);
+                const excerpt = metadata.description || generateExcerpt(content);
+
+                return {
+                    id,
+                    title: metadata.title || id,
+                    date: metadata.date || '',
+                    excerpt: excerpt,
+                    tags: tags,
+                    image: metadata.image || ''
+                };
+            } catch (error) {
+                console.error(`Error loading article ${id}:`, error);
+                return null;
+            }
+        });
+
+        const articles = (await Promise.all(articlesPromises)).filter(a => a !== null);
+        allArticles = articles;
+
         // Sort by date (newest first)
         const sorted = [...allArticles].sort((a, b) => new Date(b.date) - new Date(a.date));
-        
-        if (sorted.length === 0) {
-            articlesList.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999;">No articles yet. Check back soon!</p>';
-            return;
+
+        // Render featured articles (subset of all articles)
+        const featured = sorted.filter(a => FEATURED_ARTICLE_IDS.includes(a.id));
+        const featuredContainer = document.getElementById('featured-articles');
+        if (featuredContainer) {
+            if (featured.length === 0) {
+                featuredContainer.innerHTML = '<p style="text-align: center; color: #999;">No featured articles yet.</p>';
+            } else {
+                featuredContainer.innerHTML = renderArticleCards(featured);
+            }
         }
-        
-        articlesList.innerHTML = sorted.map(article => `
+
+        // Render all articles
+        const allContainer = document.getElementById('all-articles-list');
+        if (allContainer) {
+            if (sorted.length === 0) {
+                allContainer.innerHTML = '<p style="text-align: center; color: #999;">No articles yet.</p>';
+            } else {
+                allContainer.innerHTML = renderArticleCards(sorted);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading articles:', error);
+        const featuredContainer = document.getElementById('featured-articles');
+        if (featuredContainer) {
+            featuredContainer.innerHTML = '<p style="text-align: center; color: #999;">Could not load articles. Try again later.</p>';
+        }
+        const allContainer = document.getElementById('all-articles-list');
+        if (allContainer) {
+            allContainer.innerHTML = '<p style="text-align: center; color: #999;">Could not load articles. Try again later.</p>';
+        }
+    }
+}
+
+// Generate HTML for article cards
+function renderArticleCards(articles) {
+    return articles.map(article => {
+        const tagHtml = renderTags(article.tags, article.id);
+        return `
             <article class="article-card" onclick="if(event.target.classList.contains('tag')) return; window.location='article.html?id=${article.id}'">
-                <div class="article-card-header">
+                <div class="article-card-header" ${article.image ? `style="--card-image: url('${article.image}')"` : ''}>
                     <h3>${article.title}</h3>
                     <p class="article-date">${formatDate(article.date)}</p>
-                    <div class="article-card-tags">
-                        ${(article.tags || []).map(tag => `<span class="tag" onclick="filterByTag('${tag}', event)">${tag}</span>`).join('')}
-                    </div>
                 </div>
                 <div class="article-card-body">
                     <p>${article.excerpt}</p>
+                    <div class="article-card-tags">${tagHtml}</div>
                     <a href="article.html?id=${article.id}" class="read-more">Read More →</a>
                 </div>
             </article>
-        `).join('');
-    } catch (error) {
-        console.error('Error loading articles:', error);
-    }
+        `;
+    }).join('');
 }
 
 // Format date nicely
 function formatDate(dateString) {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('en-US', options);
+}
+
+// Truncate text to a maximum character count, appending "..."
+function truncateText(text, maxLength) {
+    if (!text || text.length <= maxLength) return text || '';
+    return text.substring(0, maxLength).trim() + '...';
 }
 
 // Get all unique tags from articles
@@ -104,7 +246,7 @@ function performSearch(query) {
     if (matchingTags.length > 0) {
         dropdownHTML += '<div class="search-result-item tag"><strong>Available Tags:</strong><br>';
         dropdownHTML += matchingTags.map(tag => 
-            `<span class="search-result-item tag-badge" onclick="filterByTag('${tag}', event)">${tag}</span>`
+            `<span class="search-result-item tag-badge ${getTagClass(tag)}" onclick="filterByTag('${tag}', event)">${tag}</span>`
         ).join('');
         dropdownHTML += '</div>';
     }
@@ -150,62 +292,76 @@ async function loadArticle() {
     }
     
     try {
-        // Use GitHub raw content URL for markdown files
-        const rawUrl = `https://raw.githubusercontent.com/DemodulatedWave/DemodulatedWave.github.io/main/articles/${articleId}/article.md`;
+        const rawUrl = `${ARTICLES_DIR}/${articleId}/article.md`;
         const response = await fetch(rawUrl);
         if (!response.ok) throw new Error('Article not found');
-        
+
         const markdown = await response.text();
         const contentDiv = document.getElementById('article-content');
-        
+
         if (!contentDiv) {
             console.error('Content div not found');
             return;
         }
-        
-        // Parse frontmatter
-        const frontmatterMatch = markdown.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-        let content = markdown;
-        let metadata = {};
-        
-        if (frontmatterMatch) {
-            const frontmatter = frontmatterMatch[1];
-            content = frontmatterMatch[2];
-            
-            // Simple YAML parsing
-            frontmatter.split('\n').forEach(line => {
-                const [key, ...valueParts] = line.split(':');
-                if (key && valueParts.length > 0) {
-                    metadata[key.trim()] = valueParts.join(':').trim().replace(/^['"]|['"]$/g, '');
-                }
-            });
-        }
-        
+
+        const { metadata, content } = parseFrontmatter(markdown);
+
         // Set page title and header
         if (metadata.title) {
             document.title = metadata.title + ' - Electronics Lab';
             const titleEl = document.getElementById('article-title');
             if (titleEl) titleEl.textContent = metadata.title;
         }
-        
+
         if (metadata.date) {
             const dateEl = document.getElementById('article-date');
             if (dateEl) dateEl.textContent = formatDate(metadata.date);
         }
-        
+
         // Parse and display tags
         if (metadata.tags) {
-            const tags = metadata.tags.split(',').map(t => t.trim()).filter(t => t);
+            const tags = parseTags(metadata.tags);
             const tagsEl = document.getElementById('article-tags');
             if (tagsEl && tags.length > 0) {
-                tagsEl.innerHTML = tags.map(tag => 
-                    `<span class="tag" onclick="filterByTag('${tag}', event)">${tag}</span>`
-                ).join('');
+                tagsEl.innerHTML = renderTags(tags, articleId, tags.length);
+            }
+        }
+
+        // Display article image (if set in frontmatter)
+        if (metadata.image) {
+            const imgEl = document.getElementById('article-image');
+            if (imgEl) {
+                imgEl.src = metadata.image;
+                imgEl.alt = metadata.title || 'Article image';
+                imgEl.classList.add('visible');
             }
         }
         
         // Convert markdown to HTML
-        const htmlContent = marked.parse(content);
+        let htmlContent = marked.parse(content);
+
+        // Post-process: convert GitHub-style alert blockquotes to notice elements
+        // Syntax: > [!NOTE], > [!TIP], > [!WARNING], > [!INFO], etc.
+        const alertTypes = 'NOTE|TIP|WARNING|DANGER|INFO|CAUTION|IMPORTANT|REMEMBER';
+
+        // Case 1: separate paragraph — <p>[!TYPE]</p> followed by content
+        htmlContent = htmlContent.replace(
+            new RegExp('<blockquote>\\s*<p>\\[!(' + alertTypes + ')\\]</p>([\\s\\S]*?)</blockquote>', 'gi'),
+            (match, type, body) =>
+                `<blockquote class="notice notice-${type.toLowerCase()}">${body.trim()}</blockquote>`
+        );
+
+        // Case 2: same paragraph — <p>[!TYPE]\nText</p>
+        htmlContent = htmlContent.replace(
+            new RegExp('<blockquote>\\s*<p>\\[!(' + alertTypes + ')\\]\\s*([\\s\\S]*?)</p>([\\s\\S]*?)</blockquote>', 'gi'),
+            (match, type, firstP, rest) => {
+                const content = firstP.trim();
+                let body = content ? `<p>${content}</p>` : '';
+                if (rest) body += rest;
+                return `<blockquote class="notice notice-${type.toLowerCase()}">${body.trim()}</blockquote>`;
+            }
+        );
+
         contentDiv.innerHTML = htmlContent;
         
         // Render LaTeX with MathJax
@@ -251,13 +407,79 @@ function initializeSearch() {
     });
 }
 
+// Initialize tools dropdown
+function initializeToolsDropdown() {
+    const toggle = document.querySelector('.tools-toggle');
+    const dropdown = document.querySelector('.tools-dropdown');
+
+    if (!toggle || !dropdown) return;
+
+    toggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        dropdown.classList.toggle('open');
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.tools-dropdown')) {
+            dropdown.classList.remove('open');
+        }
+    });
+}
+
+// Load shared header and footer partials
+async function loadPartials() {
+    const headerPlaceholder = document.getElementById('site-header-placeholder');
+    const footerPlaceholder = document.getElementById('site-footer-placeholder');
+
+    const fetches = [];
+
+    if (headerPlaceholder) {
+        fetches.push(
+            fetch('_header.html')
+                .then(r => r.ok ? r.text() : Promise.reject('Could not load header'))
+                .then(html => { headerPlaceholder.innerHTML = html; })
+        );
+    }
+
+    if (footerPlaceholder) {
+        fetches.push(
+            fetch('_footer.html')
+                .then(r => r.ok ? r.text() : Promise.reject('Could not load footer'))
+                .then(html => { footerPlaceholder.innerHTML = html; })
+        );
+    }
+
+    await Promise.all(fetches);
+
+    // Initialize nav components once the header is in the DOM
+    initializeSearch();
+    initializeToolsDropdown();
+    setActiveNav();
+}
+
+// Set the active nav link based on current page
+function setActiveNav() {
+    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    const navLinks = document.querySelectorAll('.nav-links a');
+    navLinks.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === currentPage) {
+            link.classList.add('active');
+        } else {
+            link.classList.remove('active');
+        }
+    });
+}
+
 // Initialize based on page
 document.addEventListener('DOMContentLoaded', function() {
-    initializeSearch();
-    
-    if (window.location.pathname.includes('article.html')) {
-        loadArticle();
-    } else {
-        loadArticles();
-    }
+    loadPartials().then(() => {
+        if (window.location.pathname.includes('article.html')) {
+            loadArticle();
+        } else {
+            loadArticles();
+        }
+    }).catch(err => {
+        console.error('Error loading page partials:', err);
+    });
 });

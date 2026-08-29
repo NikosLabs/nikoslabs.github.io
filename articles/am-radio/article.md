@@ -1,7 +1,10 @@
 ---
-title: Building a simple AM Radio Reciever
+title: Build an AM Radio!
 date: 2026-07-29
 author: DemodulatedWave
+tags: Radio, AM, Intermediate, Analog, Tutorial, RF, Theory
+description: A guide to build a simple AM radio receiver.
+image: assets/placeholder.jpg
 ---
 
 # Getting Started: AM Radio
@@ -31,9 +34,9 @@ Here's the basic circuit we will be looking at:
 
 ## How It Works
 
-# Antenna
+## Antenna
 
-# LC Tank
+## LC Tank
 **How it works**
 It can be calculated with:
 $$f_0 = \frac{1}{2\pi \sqrt{LC}}$$
@@ -41,14 +44,14 @@ $$f_0 = \frac{1}{2\pi \sqrt{LC}}$$
 **Inductor**
 **Capacitor**
 
-# Demodulation
+## Demodulation
 **What is an Envelope detector?**
 $$\frac{1}{f_c} \ll RC \ll \frac{1}{f_m}$$
 **Diode**
 **Resistor**
 **Capacitor**
 
-# Amplification
+## Amplification
 **LM386**
 **Importance of Decoupling**
 
