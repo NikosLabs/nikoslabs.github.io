@@ -3,8 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculator - Niko's Lab</title>
+    <title>Engineer's Calculator - Niko's Lab</title>
     <link rel="stylesheet" href="style.css">
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 <body>
     <div id="site-header-placeholder"></div>
@@ -14,36 +21,24 @@
             <a href="index.html" class="back-button">← Back to Home</a>
 
             <section class="tool-page">
-                <h2>Calculator</h2>
-                <div class="calculator">
-                    <div class="calc-display">
-                        <div id="calc-history" class="calc-history"></div>
-                        <div id="calc-output" class="calc-output">0</div>
+                <h2>Engineer's Calculator</h2>
+                <div class="eng-calc-layout">
+                    <div class="eng-calc-sidebar">
+                        <div class="eng-calc-sidebar-header">
+                            <span>Calculators</span>
+                            <button class="eng-calc-add-btn" id="add-calculator">+ Add New</button>
+                        </div>
+                        <div class="eng-calc-list" id="calculator-list"></div>
+                        <div class="eng-calc-save-load">
+                            <button class="eng-calc-save-btn" id="save-btn">Save</button>
+                            <button class="eng-calc-load-btn" id="load-btn">Load</button>
+                            <input type="file" id="file-input" accept=".json" style="display:none">
+                        </div>
                     </div>
-                    <div class="calc-keys">
-                        <button class="calc-btn operator" data-action="clear">C</button>
-                        <button class="calc-btn operator" data-action="backspace">⌫</button>
-                        <button class="calc-btn operator" data-action="percent">%</button>
-                        <button class="calc-btn operator" data-action="operator">÷</button>
-
-                        <button class="calc-btn" data-action="digit">7</button>
-                        <button class="calc-btn" data-action="digit">8</button>
-                        <button class="calc-btn" data-action="digit">9</button>
-                        <button class="calc-btn operator" data-action="operator">×</button>
-
-                        <button class="calc-btn" data-action="digit">4</button>
-                        <button class="calc-btn" data-action="digit">5</button>
-                        <button class="calc-btn" data-action="digit">6</button>
-                        <button class="calc-btn operator" data-action="operator">−</button>
-
-                        <button class="calc-btn" data-action="digit">1</button>
-                        <button class="calc-btn" data-action="digit">2</button>
-                        <button class="calc-btn" data-action="digit">3</button>
-                        <button class="calc-btn operator" data-action="operator">+</button>
-
-                        <button class="calc-btn zero" data-action="digit">0</button>
-                        <button class="calc-btn" data-action="decimal">.</button>
-                        <button class="calc-btn equals" data-action="equals">=</button>
+                    <div class="eng-calc-main" id="calculator-main">
+                        <div class="eng-calc-empty" id="empty-state">
+                            <p>Select a calculator from the list or add a new one.</p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -54,161 +49,861 @@
 
     <script src="script.js"></script>
     <script>
-        (function() {
-            const output = document.getElementById('calc-output');
-            const history = document.getElementById('calc-history');
-            const keys = document.querySelector('.calc-keys');
+    (function() {
+        var EQUATIONS = {
+            "LC Circuits": [
+                { id: "lc-tank", name: "LC Tank Resonant Frequency", formula: "f = 1 / (2π√(LC))", latex: "f = \\frac{1}{2\\pi\\sqrt{LC}}", resultUnit: "Hz", variables: [
+                    { symbol: "L", name: "Inductance", unit: "H", defaultVal: 100e-6, defaultPrefix: -3, solve: false },
+                    { symbol: "C", name: "Capacitance", unit: "F", defaultVal: 100e-12, defaultPrefix: -9, solve: false },
+                    { symbol: "f", name: "Frequency", unit: "Hz", defaultVal: 0, defaultPrefix: 3, solve: true }
+                ]},
+                { id: "lc-impedance", name: "LC Circuit Impedance", formula: "Z = √(L/C)", latex: "Z = \\sqrt{\\frac{L}{C}}", resultUnit: "Ω", variables: [
+                    { symbol: "L", name: "Inductance", unit: "H", defaultVal: 10e-6, defaultPrefix: -3, solve: false },
+                    { symbol: "C", name: "Capacitance", unit: "F", defaultVal: 100e-9, defaultPrefix: -6, solve: false },
+                    { symbol: "Z", name: "Impedance", unit: "Ω", defaultVal: 0, defaultPrefix: 0, solve: true }
+                ]},
+                { id: "lc-reactance-l", name: "Inductive Reactance", formula: "XL = 2πfL", latex: "X_L = 2\\pi f L", resultUnit: "Ω", variables: [
+                    { symbol: "f", name: "Frequency", unit: "Hz", defaultVal: 1e6, defaultPrefix: 3, solve: false },
+                    { symbol: "L", name: "Inductance", unit: "H", defaultVal: 10e-6, defaultPrefix: -3, solve: false },
+                    { symbol: "XL", name: "Reactance", unit: "Ω", defaultVal: 0, defaultPrefix: 0, solve: true }
+                ]},
+                { id: "lc-reactance-c", name: "Capacitive Reactance", formula: "XC = 1 / (2πfC)", latex: "X_C = \\frac{1}{2\\pi f C}", resultUnit: "Ω", variables: [
+                    { symbol: "f", name: "Frequency", unit: "Hz", defaultVal: 1e6, defaultPrefix: 3, solve: false },
+                    { symbol: "C", name: "Capacitance", unit: "F", defaultVal: 100e-12, defaultPrefix: -9, solve: false },
+                    { symbol: "XC", name: "Reactance", unit: "Ω", defaultVal: 0, defaultPrefix: 0, solve: true }
+                ]}
+            ],
+            "Ohm's Law": [
+                { id: "ohm-voltage", name: "Voltage (V = IR)", formula: "V = I × R", latex: "V = I \\times R", resultUnit: "V", variables: [
+                    { symbol: "I", name: "Current", unit: "A", defaultVal: 1e-3, defaultPrefix: 0, solve: false },
+                    { symbol: "R", name: "Resistance", unit: "Ω", defaultVal: 1e3, defaultPrefix: 0, solve: false },
+                    { symbol: "V", name: "Voltage", unit: "V", defaultVal: 0, defaultPrefix: 0, solve: true }
+                ]},
+                { id: "ohm-current", name: "Current (I = V/R)", formula: "I = V / R", latex: "I = \\frac{V}{R}", resultUnit: "A", variables: [
+                    { symbol: "V", name: "Voltage", unit: "V", defaultVal: 5, defaultPrefix: 0, solve: false },
+                    { symbol: "R", name: "Resistance", unit: "Ω", defaultVal: 1e3, defaultPrefix: 0, solve: false },
+                    { symbol: "I", name: "Current", unit: "A", defaultVal: 0, defaultPrefix: 0, solve: true }
+                ]},
+                { id: "ohm-resistance", name: "Resistance (R = V/I)", formula: "R = V / I", latex: "R = \\frac{V}{I}", resultUnit: "Ω", variables: [
+                    { symbol: "V", name: "Voltage", unit: "V", defaultVal: 5, defaultPrefix: 0, solve: false },
+                    { symbol: "I", name: "Current", unit: "A", defaultVal: 1e-3, defaultPrefix: 0, solve: false },
+                    { symbol: "R", name: "Resistance", unit: "Ω", defaultVal: 0, defaultPrefix: 0, solve: true }
+                ]},
+                { id: "ohm-power", name: "Power (P = VI)", formula: "P = V × I", latex: "P = V \\times I", resultUnit: "W", variables: [
+                    { symbol: "V", name: "Voltage", unit: "V", defaultVal: 5, defaultPrefix: 0, solve: false },
+                    { symbol: "I", name: "Current", unit: "A", defaultVal: 100e-3, defaultPrefix: -3, solve: false },
+                    { symbol: "P", name: "Power", unit: "W", defaultVal: 0, defaultPrefix: 0, solve: true }
+                ]}
+            ],
+            "Filters": [
+                { id: "rc-cutoff", name: "RC Low-Pass Cutoff", formula: "f = 1 / (2πRC)", latex: "f_c = \\frac{1}{2\\pi RC}", resultUnit: "Hz", variables: [
+                    { symbol: "R", name: "Resistance", unit: "Ω", defaultVal: 1e3, defaultPrefix: 0, solve: false },
+                    { symbol: "C", name: "Capacitance", unit: "F", defaultVal: 100e-9, defaultPrefix: -6, solve: false },
+                    { symbol: "f", name: "Cutoff Freq", unit: "Hz", defaultVal: 0, defaultPrefix: 3, solve: true }
+                ]},
+                { id: "rc-highpass", name: "RC High-Pass Cutoff", formula: "f = 1 / (2πRC)", latex: "f_c = \\frac{1}{2\\pi RC}", resultUnit: "Hz", variables: [
+                    { symbol: "R", name: "Resistance", unit: "Ω", defaultVal: 1e3, defaultPrefix: 0, solve: false },
+                    { symbol: "C", name: "Capacitance", unit: "F", defaultVal: 100e-9, defaultPrefix: -6, solve: false },
+                    { symbol: "f", name: "Cutoff Freq", unit: "Hz", defaultVal: 0, defaultPrefix: 3, solve: true }
+                ]},
+                { id: "rc-time-constant", name: "RC Time Constant", formula: "τ = R × C", latex: "\\tau = R \\times C", resultUnit: "s", variables: [
+                    { symbol: "R", name: "Resistance", unit: "Ω", defaultVal: 1e3, defaultPrefix: 0, solve: false },
+                    { symbol: "C", name: "Capacitance", unit: "F", defaultVal: 1e-6, defaultPrefix: -6, solve: false },
+                    { symbol: "τ", name: "Time Constant", unit: "s", defaultVal: 0, defaultPrefix: -3, solve: true }
+                ]},
+                { id: "rl-lowpass", name: "RL Low-Pass Cutoff", formula: "f = R / (2πL)", latex: "f_c = \\frac{R}{2\\pi L}", resultUnit: "Hz", variables: [
+                    { symbol: "R", name: "Resistance", unit: "Ω", defaultVal: 1e3, defaultPrefix: 0, solve: false },
+                    { symbol: "L", name: "Inductance", unit: "H", defaultVal: 10e-3, defaultPrefix: -3, solve: false },
+                    { symbol: "f", name: "Cutoff Freq", unit: "Hz", defaultVal: 0, defaultPrefix: 3, solve: true }
+                ]},
+                { id: "rl-highpass", name: "RL High-Pass Cutoff", formula: "f = R / (2πL)", latex: "f_c = \\frac{R}{2\\pi L}", resultUnit: "Hz", variables: [
+                    { symbol: "R", name: "Resistance", unit: "Ω", defaultVal: 1e3, defaultPrefix: 0, solve: false },
+                    { symbol: "L", name: "Inductance", unit: "H", defaultVal: 10e-3, defaultPrefix: -3, solve: false },
+                    { symbol: "f", name: "Cutoff Freq", unit: "Hz", defaultVal: 0, defaultPrefix: 3, solve: true }
+                ]},
+                { id: "rlc-bandpass", name: "RLC Band-Pass", formula: "f = 1 / (2π√LC)", latex: "f_0 = \\frac{1}{2\\pi\\sqrt{LC}}", resultUnit: "Hz", variables: [
+                    { symbol: "L", name: "Inductance", unit: "H", defaultVal: 100e-6, defaultPrefix: -3, solve: false },
+                    { symbol: "C", name: "Capacitance", unit: "F", defaultVal: 100e-12, defaultPrefix: -9, solve: false },
+                    { symbol: "f", name: "Center Freq", unit: "Hz", defaultVal: 0, defaultPrefix: 3, solve: true }
+                ]},
+                { id: "rlc-bandwidth", name: "RLC Bandwidth", formula: "BW = R / L", latex: "BW = \\frac{R}{L}", resultUnit: "Hz", variables: [
+                    { symbol: "R", name: "Resistance", unit: "Ω", defaultVal: 50, defaultPrefix: 0, solve: false },
+                    { symbol: "L", name: "Inductance", unit: "H", defaultVal: 100e-6, defaultPrefix: -3, solve: false },
+                    { symbol: "BW", name: "Bandwidth", unit: "Hz", defaultVal: 0, defaultPrefix: 3, solve: true }
+                ]},
+                { id: "rlc-q", name: "RLC Quality Factor", formula: "Q = (1/R) × √(L/C)", latex: "Q = \\frac{1}{R}\\sqrt{\\frac{L}{C}}", resultUnit: "", variables: [
+                    { symbol: "R", name: "Resistance", unit: "Ω", defaultVal: 50, defaultPrefix: 0, solve: false },
+                    { symbol: "L", name: "Inductance", unit: "H", defaultVal: 100e-6, defaultPrefix: -3, solve: false },
+                    { symbol: "C", name: "Capacitance", unit: "F", defaultVal: 100e-12, defaultPrefix: -9, solve: false },
+                    { symbol: "Q", name: "Quality Factor", unit: "", defaultVal: 0, defaultPrefix: 0, solve: true }
+                ]},
+                { id: "rlc-bandstop", name: "RLC Band-Stop (Notch)", formula: "f = 1 / (2π√LC)", latex: "f_0 = \\frac{1}{2\\pi\\sqrt{LC}}", resultUnit: "Hz", variables: [
+                    { symbol: "L", name: "Inductance", unit: "H", defaultVal: 10e-3, defaultPrefix: -3, solve: false },
+                    { symbol: "C", name: "Capacitance", unit: "F", defaultVal: 10e-9, defaultPrefix: -6, solve: false },
+                    { symbol: "f", name: "Notch Freq", unit: "Hz", defaultVal: 0, defaultPrefix: 3, solve: true }
+                ]},
+                { id: "filter-attenuation", name: "Filter Attenuation (dB)", formula: "A = 20log10(Vout/Vin)", latex: "A = 20\\log_{10}\\left(\\frac{V_{out}}{V_{in}}\\right)", resultUnit: "dB", variables: [
+                    { symbol: "Vin", name: "Input Voltage", unit: "V", defaultVal: 1, defaultPrefix: 0, solve: false },
+                    { symbol: "Vout", name: "Output Voltage", unit: "V", defaultVal: 0.5, defaultPrefix: 0, solve: false },
+                    { symbol: "A", name: "Attenuation", unit: "dB", defaultVal: 0, defaultPrefix: 0, solve: true }
+                ]},
+                { id: "filter-rolloff", name: "Filter Rolloff Order", formula: "dB/dec = 20 × n", latex: "\\text{dB/dec} = 20 \\times n", resultUnit: "dB/dec", variables: [
+                    { symbol: "n", name: "Filter Order", unit: "", defaultVal: 1, defaultPrefix: 0, solve: false },
+                    { symbol: "dBdec", name: "Rolloff", unit: "dB/dec", defaultVal: 0, defaultPrefix: 0, solve: true }
+                ]}
+            ],
+            "Dividers": [
+                { id: "voltage-divider", name: "Voltage Divider", formula: "Vout = Vin × R2 / (R1 + R2)", latex: "V_{out} = V_{in} \\times \\frac{R_2}{R_1 + R_2}", resultUnit: "V", variables: [
+                    { symbol: "Vin", name: "Input Voltage", unit: "V", defaultVal: 5, defaultPrefix: 0, solve: false },
+                    { symbol: "R1", name: "R1", unit: "Ω", defaultVal: 1e3, defaultPrefix: 0, solve: false },
+                    { symbol: "R2", name: "R2", unit: "Ω", defaultVal: 2.2e3, defaultPrefix: 3, solve: false },
+                    { symbol: "Vout", name: "Output Voltage", unit: "V", defaultVal: 0, defaultPrefix: 0, solve: true }
+                ]}
+            ],
+            "555 Timer": [
+                { id: "555-astable", name: "555 Astable Frequency", formula: "f = 1.44 / ((R1+2R2)C)", latex: "f = \\frac{1.44}{(R_1 + 2R_2)C}", resultUnit: "Hz", variables: [
+                    { symbol: "R1", name: "R1", unit: "Ω", defaultVal: 1e3, defaultPrefix: 0, solve: false },
+                    { symbol: "R2", name: "R2", unit: "Ω", defaultVal: 10e3, defaultPrefix: 3, solve: false },
+                    { symbol: "C", name: "Capacitance", unit: "F", defaultVal: 1e-6, defaultPrefix: -6, solve: false },
+                    { symbol: "f", name: "Frequency", unit: "Hz", defaultVal: 0, defaultPrefix: 3, solve: true }
+                ]},
+                { id: "555-duty", name: "555 Astable Duty Cycle", formula: "D = (R1+R2) / (R1+2R2)", latex: "D = \\frac{R_1 + R_2}{R_1 + 2R_2}", resultUnit: "%", variables: [
+                    { symbol: "R1", name: "R1", unit: "Ω", defaultVal: 1e3, defaultPrefix: 0, solve: false },
+                    { symbol: "R2", name: "R2", unit: "Ω", defaultVal: 10e3, defaultPrefix: 3, solve: false },
+                    { symbol: "D", name: "Duty Cycle", unit: "%", defaultVal: 0, defaultPrefix: 0, solve: true }
+                ]}
+            ],
+            "AM Demodulator": [
+                { id: "am-rc-check", name: "AM RC Condition Check", formula: "fm << 1/(2πRC) << fc", latex: "f_m \\ll \\frac{1}{2\\pi RC} \\ll f_c", resultUnit: "", variables: [
+                    { symbol: "fm", name: "Message Freq", unit: "Hz", defaultVal: 1e3, defaultPrefix: 3, solve: false },
+                    { symbol: "R", name: "Resistance", unit: "Ω", defaultVal: 1e3, defaultPrefix: 0, solve: false },
+                    { symbol: "C", name: "Capacitance", unit: "F", defaultVal: 10e-9, defaultPrefix: -6, solve: false },
+                    { symbol: "fc", name: "Carrier Freq", unit: "Hz", defaultVal: 0, defaultPrefix: 6, solve: true }
+                ]},
+                { id: "am-rc-calc", name: "AM RC Value (Geometric Mean)", formula: "RC = 1/(2π√(fm*fc))", latex: "RC = \\frac{1}{2\\pi\\sqrt{f_m \\cdot f_c}}", resultUnit: "s", variables: [
+                    { symbol: "fm", name: "Message Freq", unit: "Hz", defaultVal: 1e3, defaultPrefix: 3, solve: false },
+                    { symbol: "fc", name: "Carrier Freq", unit: "Hz", defaultVal: 1e6, defaultPrefix: 6, solve: false },
+                    { symbol: "RC", name: "RC Time Constant", unit: "s", defaultVal: 0, defaultPrefix: -6, solve: true }
+                ]},
+                { id: "am-modulation-index", name: "AM Modulation Index", formula: "m = (Amax - Amin) / (Amax + Amin)", latex: "m = \\frac{A_{max} - A_{min}}{A_{max} + A_{min}}", resultUnit: "", variables: [
+                    { symbol: "Amax", name: "Max Amplitude", unit: "V", defaultVal: 10, defaultPrefix: 0, solve: false },
+                    { symbol: "Amin", name: "Min Amplitude", unit: "V", defaultVal: 2, defaultPrefix: 0, solve: false },
+                    { symbol: "m", name: "Modulation Index", unit: "", defaultVal: 0, defaultPrefix: 0, solve: true }
+                ]}
+            ],
+            "Transconductance": [
+                { id: "gm-fet", name: "FET Transconductance", formula: "gm = Id / Vgs", latex: "g_m = \\frac{I_d}{V_{gs}}", resultUnit: "S", variables: [
+                    { symbol: "Id", name: "Drain Current", unit: "A", defaultVal: 1e-3, defaultPrefix: 0, solve: false },
+                    { symbol: "Vgs", name: "Gate-Source Voltage", unit: "V", defaultVal: 0.5, defaultPrefix: 0, solve: false },
+                    { symbol: "gm", name: "Transconductance", unit: "S", defaultVal: 0, defaultPrefix: -3, solve: true }
+                ]},
+                { id: "gm-bjt", name: "BJT Transconductance", formula: "gm = Ic / VT", latex: "g_m = \\frac{I_c}{V_T}", resultUnit: "S", variables: [
+                    { symbol: "Ic", name: "Collector Current", unit: "A", defaultVal: 1e-3, defaultPrefix: 0, solve: false },
+                    { symbol: "VT", name: "Thermal Voltage", unit: "V", defaultVal: 0.026, defaultPrefix: 0, solve: false },
+                    { symbol: "gm", name: "Transconductance", unit: "S", defaultVal: 0, defaultPrefix: -3, solve: true }
+                ]},
+                { id: "gm-over-vgs", name: "FET gm/Overdrive", formula: "gm = 2Id / (Vgs - Vth)", latex: "g_m = \\frac{2I_d}{V_{gs} - V_{th}}", resultUnit: "S", variables: [
+                    { symbol: "Id", name: "Drain Current", unit: "A", defaultVal: 1e-3, defaultPrefix: 0, solve: false },
+                    { symbol: "Vgs", name: "Gate-Source Voltage", unit: "V", defaultVal: 0.8, defaultPrefix: 0, solve: false },
+                    { symbol: "Vth", name: "Threshold Voltage", unit: "V", defaultVal: 0.3, defaultPrefix: 0, solve: false },
+                    { symbol: "gm", name: "Transconductance", unit: "S", defaultVal: 0, defaultPrefix: -3, solve: true }
+                ]}
+            ]
+        };
 
-            if (!output || !history || !keys) return;
+        var SI_PREFIXES = [
+            { exp: 12, symbol: "T" },
+            { exp: 9, symbol: "G" },
+            { exp: 6, symbol: "M" },
+            { exp: 3, symbol: "k" },
+            { exp: 0, symbol: "" },
+            { exp: -3, symbol: "m" },
+            { exp: -6, symbol: "μ" },
+            { exp: -9, symbol: "n" },
+            { exp: -12, symbol: "p" },
+            { exp: -15, symbol: "f" }
+        ];
 
-            let currentOperand = '0';
-            let previousOperand = '';
-            let operation = undefined;
-            let resetScreen = false;
+        var calculators = [];
+        var activeCalcId = null;
+        var nextId = 1;
+        var updating = false;
 
-            function updateDisplay() {
-                output.textContent = currentOperand;
-                history.textContent = previousOperand + (operation ? ' ' + operation : '');
-            }
+        function generateId() { return 'calc-' + (nextId++); }
 
-            function appendNumber(number) {
-                if (currentOperand === '0' || resetScreen) {
-                    currentOperand = number;
-                    resetScreen = false;
-                } else {
-                    currentOperand += number;
-                }
-            }
-
-            function chooseOperation(op) {
-                if (operation !== undefined) evaluate();
-                previousOperand = currentOperand;
-                operation = op;
-                resetScreen = true;
-            }
-
-            function evaluate() {
-                let computation;
-                const prev = parseFloat(previousOperand);
-                const current = parseFloat(currentOperand);
-                if (isNaN(prev) || isNaN(current)) return;
-
-                switch (operation) {
-                    case '+': computation = prev + current; break;
-                    case '−': computation = prev - current; break;
-                    case '×': computation = prev * current; break;
-                    case '÷':
-                        if (current === 0) { alert('Cannot divide by zero'); return; }
-                        computation = prev / current;
-                        break;
-                    default: return;
-                }
-
-                currentOperand = formatResult(computation);
-                operation = undefined;
-                previousOperand = '';
-            }
-
-            function formatResult(num) {
-                const str = String(num);
-                if (str.length > 12) {
-                    const parts = str.split('.');
-                    if (parts[1] && parts[1].length > 6) {
-                        return parseFloat(num.toPrecision(12)).toString();
-                    }
-                }
-                return str;
-            }
-
-            function clearAll() {
-                currentOperand = '0';
-                previousOperand = '';
-                operation = undefined;
-            }
-
-            function backspace() {
-                if (resetScreen) {
-                    currentOperand = '0';
-                    resetScreen = false;
-                    return;
-                }
-                if (currentOperand.length <= 1 || (currentOperand.length === 2 && currentOperand.startsWith('-'))) {
-                    currentOperand = '0';
-                } else {
-                    currentOperand = currentOperand.slice(0, -1);
-                }
-            }
-
-            function percent() {
-                if (operation === undefined || operation === null) {
-                    currentOperand = formatResult(parseFloat(currentOperand) / 100);
-                } else {
-                    const prev = parseFloat(previousOperand);
-                    currentOperand = formatResult(prev * parseFloat(currentOperand) / 100);
-                }
-            }
-
-            function appendDecimal() {
-                if (resetScreen) {
-                    currentOperand = '0.';
-                    resetScreen = false;
-                    return;
-                }
-                if (!currentOperand.includes('.')) {
-                    currentOperand += '.';
-                }
-            }
-
-            keys.addEventListener('click', function(e) {
-                const target = e.target;
-                if (!target.matches('button')) return;
-
-                const action = target.dataset.action;
-
-                switch (action) {
-                    case 'digit': appendNumber(target.textContent); break;
-                    case 'decimal': appendDecimal(); break;
-                    case 'operator': chooseOperation(target.textContent); break;
-                    case 'equals':
-                        evaluate();
-                        resetScreen = true;
-                        break;
-                    case 'clear': clearAll(); break;
-                    case 'backspace': backspace(); break;
-                    case 'percent': percent(); break;
-                }
-
-                updateDisplay();
-            });
-
-            document.addEventListener('keydown', function(e) {
-                const keyMap = {
-                    '0': 'digit', '1': 'digit', '2': 'digit', '3': 'digit', '4': 'digit',
-                    '5': 'digit', '6': 'digit', '7': 'digit', '8': 'digit', '9': 'digit',
-                    '+': 'operator', '-': 'operator', '*': 'operator', '/': 'operator',
-                    '.': 'decimal',
-                    'Enter': 'equals', '=': 'equals', 'Escape': 'clear',
-                    'Backspace': 'backspace', '%': 'percent'
+        function createCalculator(eqData, name) {
+            var vars = eqData.variables.map(function(v) {
+                return {
+                    symbol: v.symbol,
+                    name: v.name,
+                    unit: v.unit,
+                    value: v.defaultVal,
+                    displayValue: v.defaultVal / Math.pow(10, v.defaultPrefix),
+                    prefixExp: v.defaultPrefix,
+                    solve: v.solve || false,
+                    sourceCalcId: null
                 };
-                const operatorMap = { '+': '+', '-': '−', '*': '×', '/': '÷' };
-                if (e.target !== output && e.target !== keys) {
-                    const v = keyMap[e.key];
-                    if (v) {
-                        e.preventDefault();
-                        if (v === 'digit') appendNumber(e.key);
-                        else if (v === 'decimal') appendDecimal();
-                        else if (v === 'operator') chooseOperation(operatorMap[e.key]);
-                        else if (v === 'equals') { evaluate(); resetScreen = true; }
-                        else if (v === 'clear') clearAll();
-                        else if (v === 'backspace') backspace();
-                        else if (v === 'percent') percent();
-                        updateDisplay();
-                    }
+            });
+            return {
+                id: generateId(),
+                name: name || eqData.name,
+                equationId: eqData.id,
+                equationName: eqData.name,
+                formula: eqData.formula,
+                latex: eqData.latex,
+                resultUnit: eqData.resultUnit,
+                variables: vars
+            };
+        }
+
+        function findEquationById(id) {
+            var cats = Object.keys(EQUATIONS);
+            for (var i = 0; i < cats.length; i++) {
+                var eqs = EQUATIONS[cats[i]];
+                for (var j = 0; j < eqs.length; j++) {
+                    if (eqs[j].id === id) return eqs[j];
+                }
+            }
+            return null;
+        }
+
+        function getBaseUnitValue(calc) {
+            var resultVar = calc.variables.find(function(v) { return v.solve; });
+            if (!resultVar) return 0;
+            return resultVar.value;
+        }
+
+        function resolveVariableValue(v, calc, visited) {
+            if (!v.sourceCalcId) return v.value;
+            if (visited.has(calc.id)) return 0;
+            visited.add(calc.id);
+            var sourceCalc = calculators.find(function(c) { return c.id === v.sourceCalcId; });
+            if (!sourceCalc) return v.value;
+            solveEquationWithVisited(sourceCalc, visited);
+            var baseValue = getBaseUnitValue(sourceCalc);
+            return baseValue;
+        }
+
+        function solveEquationWithVisited(calc, visited) {
+            if (!visited) visited = new Set();
+            if (visited.has(calc.id)) return;
+            visited.add(calc.id);
+
+            var vars = {};
+            calc.variables.forEach(function(v) {
+                if (v.solve) return;
+                if (v.sourceCalcId) {
+                    var baseVal = resolveVariableValue(v, calc, visited);
+                    vars[v.symbol] = baseVal;
+                    v.value = baseVal;
+                    v.displayValue = baseVal / Math.pow(10, v.prefixExp);
+                } else {
+                    vars[v.symbol] = v.value;
                 }
             });
 
-            updateDisplay();
-        })();
+            var resultVar = calc.variables.find(function(v) { return v.solve; });
+            if (!resultVar) return;
+
+            var inputs = calc.variables.filter(function(v) { return !v.solve; });
+            var allInputsSet = inputs.every(function(v) {
+                var val = vars[v.symbol];
+                return val !== 0 && !isNaN(val);
+            });
+
+            if (!allInputsSet) return;
+
+            var v = vars;
+            var result = 0;
+            switch (calc.equationId) {
+                case 'lc-tank': result = 1 / (2 * Math.PI * Math.sqrt(v.L * v.C)); break;
+                case 'lc-impedance': result = Math.sqrt(v.L / v.C); break;
+                case 'lc-reactance-l': result = 2 * Math.PI * v.f * v.L; break;
+                case 'lc-reactance-c': result = 1 / (2 * Math.PI * v.f * v.C); break;
+                case 'ohm-voltage': result = v.I * v.R; break;
+                case 'ohm-current': result = v.V / v.R; break;
+                case 'ohm-resistance': result = v.V / v.I; break;
+                case 'ohm-power': result = v.V * v.I; break;
+                case 'rc-cutoff': result = 1 / (2 * Math.PI * v.R * v.C); break;
+                case 'rc-time-constant': result = v.R * v.C; break;
+                case 'voltage-divider': result = v.Vin * v.R2 / (v.R1 + v.R2); break;
+                case '555-astable': result = 1.44 / ((v.R1 + 2 * v.R2) * v.C); break;
+                case '555-duty': result = ((v.R1 + v.R2) / (v.R1 + 2 * v.R2)) * 100; break;
+                case 'gm-fet': result = v.Id / v.Vgs; break;
+                case 'gm-bjt': result = v.Ic / v.VT; break;
+                case 'gm-over-vgs': result = (2 * v.Id) / (v.Vgs - v.Vth); break;
+                case 'rc-highpass': result = 1 / (2 * Math.PI * v.R * v.C); break;
+                case 'rl-lowpass': result = v.R / (2 * Math.PI * v.L); break;
+                case 'rl-highpass': result = v.R / (2 * Math.PI * v.L); break;
+                case 'rlc-bandpass': result = 1 / (2 * Math.PI * Math.sqrt(v.L * v.C)); break;
+                case 'rlc-bandwidth': result = v.R / v.L; break;
+                case 'rlc-q': result = (1 / v.R) * Math.sqrt(v.L / v.C); break;
+                case 'rlc-bandstop': result = 1 / (2 * Math.PI * Math.sqrt(v.L * v.C)); break;
+                case 'filter-attenuation': result = 20 * Math.log10(v.Vout / v.Vin); break;
+                case 'filter-rolloff': result = 20 * v.n; break;
+                case 'am-rc-check': result = 1 / (2 * Math.PI * v.R * v.C); break;
+                case 'am-rc-calc': result = 1 / (2 * Math.PI * Math.sqrt(v.fm * v.fc)); break;
+                case 'am-modulation-index': result = (v.Amax - v.Amin) / (v.Amax + v.Amin); break;
+            }
+
+            resultVar.value = result;
+            resultVar.displayValue = result / Math.pow(10, resultVar.prefixExp);
+        }
+
+        function solveEquation(calc) {
+            solveEquationWithVisited(calc, new Set());
+        }
+
+        function formatNumber(num) {
+            if (num === 0) return "0";
+            if (isNaN(num) || !isFinite(num)) return "—";
+            var abs = Math.abs(num);
+            if (abs >= 1e6 || abs < 0.001) {
+                return num.toExponential(3).replace(/\.?0+e/, 'e');
+            }
+            var str = num.toPrecision(6);
+            return parseFloat(str).toString();
+        }
+
+        function getPrefixSymbol(exp) {
+            var found = SI_PREFIXES.find(function(p) { return p.exp === exp; });
+            return found ? found.symbol : '';
+        }
+
+        function getSubstitutedLatex(calc) {
+            var latex = calc.latex;
+            var substitutions = [];
+
+            calc.variables.forEach(function(v) {
+                if (v.solve) return;
+                var prefixSym = getPrefixSymbol(v.prefixExp);
+                var valStr = '{' + formatNumber(v.displayValue) + '\\,' + prefixSym + v.unit + '}';
+                substitutions.push({ symbol: v.symbol, value: valStr });
+            });
+
+            substitutions.sort(function(a, b) { return b.symbol.length - a.symbol.length; });
+
+            var positions = [];
+            var i = 0;
+            while (i < latex.length) {
+                var matched = false;
+                for (var j = 0; j < substitutions.length; j++) {
+                    var sym = substitutions[j].symbol;
+                    if (latex.substr(i, sym.length) === sym) {
+                        var prevChar = i > 0 ? latex[i - 1] : '';
+                        var isWordChar = function(c) { return /[a-zA-Z0-9]/.test(c); };
+                        if (!isWordChar(prevChar) || (positions.length > 0 && positions[positions.length - 1].end === i)) {
+                            positions.push({ start: i, end: i + sym.length, value: substitutions[j].value });
+                            i += sym.length;
+                            matched = true;
+                            break;
+                        }
+                    }
+                }
+                if (!matched) {
+                    i++;
+                }
+            }
+
+            var result = '';
+            var lastEnd = 0;
+            for (var k = 0; k < positions.length; k++) {
+                var pos = positions[k];
+                var between = latex.substring(lastEnd, pos.start);
+                result += between;
+                if (k > 0 && positions[k - 1].end === pos.start) {
+                    result += ' \\cdot ';
+                }
+                result += pos.value;
+                lastEnd = pos.end;
+            }
+            result += latex.substring(lastEnd);
+
+            result = result.replace(/\\times/g, '\\cdot');
+
+            return result;
+        }
+
+        function updateDependentCalculators(changedCalcId, visited) {
+            if (!visited) visited = new Set();
+            if (visited.has(changedCalcId)) return;
+            visited.add(changedCalcId);
+
+            calculators.forEach(function(calc) {
+                if (calc.id === changedCalcId) return;
+                var hasDependency = calc.variables.some(function(v) {
+                    return v.sourceCalcId === changedCalcId;
+                });
+                if (hasDependency) {
+                    solveEquation(calc);
+                    updateDependentCalculators(calc.id, visited);
+                }
+            });
+        }
+
+        function renderSidebar() {
+            var list = document.getElementById('calculator-list');
+            list.innerHTML = '';
+            if (calculators.length === 0) {
+                list.innerHTML = '<div class="eng-calc-list-empty">No calculators yet. Click "+ Add New" to create one.</div>';
+                return;
+            }
+            calculators.forEach(function(calc) {
+                solveEquation(calc);
+                var item = document.createElement('div');
+                item.className = 'eng-calc-list-item' + (calc.id === activeCalcId ? ' active' : '');
+                item.dataset.id = calc.id;
+
+                var resultVal = '';
+                var resultVar = calc.variables.find(function(v) { return v.solve; });
+                if (resultVar) {
+                    var prefixSym = getPrefixSymbol(resultVar.prefixExp);
+                    resultVal = formatNumber(resultVar.displayValue) + ' ' + prefixSym + resultVar.unit;
+                }
+
+                item.innerHTML = '<div class="eng-calc-list-header">' +
+                        '<div class="eng-calc-list-name">' + calc.name + '</div>' +
+                        '<div class="eng-calc-list-id">' + calc.id + '</div>' +
+                    '</div>' +
+                    '<div class="eng-calc-list-eq">\\(' + calc.latex + '\\)</div>' +
+                    '<div class="eng-calc-list-result">' + resultVal + '</div>';
+
+                item.addEventListener('click', function() {
+                    activeCalcId = calc.id;
+                    renderSidebar();
+                    renderMain();
+                });
+                list.appendChild(item);
+            });
+
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise([list]).catch(function(err) {
+                    console.warn('MathJax error:', err.message);
+                });
+            }
+        }
+
+        function renderMain() {
+            var main = document.getElementById('calculator-main');
+            var calc = calculators.find(function(c) { return c.id === activeCalcId; });
+            if (!calc) {
+                main.innerHTML = '<div class="eng-calc-empty" id="empty-state"><p>Select a calculator from the list or add a new one.</p></div>';
+                return;
+            }
+
+            solveEquation(calc);
+
+            var resultVar = calc.variables.find(function(v) { return v.solve; });
+            var resultDisplay = '';
+            if (resultVar) {
+                var prefixSym = getPrefixSymbol(resultVar.prefixExp);
+                resultDisplay = formatNumber(resultVar.displayValue) + ' ' + prefixSym + resultVar.unit;
+            }
+
+            var html = '<div class="eng-calc-panel">' +
+                '<div class="eng-calc-panel-header">' +
+                    '<div class="eng-calc-name-display" contenteditable="true" data-field="name">' + calc.name + '</div>' +
+                    '<span class="eng-calc-rename-hint">(click to rename)</span>' +
+                '</div>' +
+                '<div class="eng-calc-eq-selector">' +
+                    '<select id="equation-select">';
+            var cats = Object.keys(EQUATIONS);
+            cats.forEach(function(cat) {
+                html += '<optgroup label="' + cat + '">';
+                EQUATIONS[cat].forEach(function(eq) {
+                    html += '<option value="' + eq.id + '"' + (eq.id === calc.equationId ? ' selected' : '') + '>' + eq.name + '</option>';
+                });
+                html += '</optgroup>';
+            });
+            html += '</select></div>' +
+                '<div class="eng-calc-formula-row">' +
+                    '<div class="eng-calc-formula" id="formula-display">\\(' + calc.latex + '\\)</div>' +
+                    '<div class="eng-calc-formula eng-calc-substituted" id="substituted-display">\\(' + getSubstitutedLatex(calc) + '\\)</div>' +
+                '</div>' +
+                '<div class="eng-calc-variables">';
+            calc.variables.forEach(function(v, i) {
+                var prefixSym = getPrefixSymbol(v.prefixExp);
+                var inputClass = v.solve ? 'eng-calc-var-input result' : 'eng-calc-var-input';
+                var linkedClass = v.sourceCalcId ? ' linked' : '';
+                var sourceName = '';
+                var sourceUnit = '';
+                var sourcePrefix = '';
+                if (v.sourceCalcId) {
+                    var srcCalc = calculators.find(function(c) { return c.id === v.sourceCalcId; });
+                    if (srcCalc) {
+                        sourceName = srcCalc.name;
+                        var srcResultVar = srcCalc.variables.find(function(sv) { return sv.solve; });
+                        if (srcResultVar) {
+                            sourceUnit = srcResultVar.unit;
+                            sourcePrefix = getPrefixSymbol(srcResultVar.prefixExp);
+                        }
+                    }
+                }
+                html += '<div class="eng-calc-var-row' + (v.solve ? ' solve' : '') + linkedClass + '">' +
+                    '<div class="eng-calc-var-symbol' + (v.solve || v.sourceCalcId ? '' : ' clickable') + '" data-index="' + i + '">' + v.symbol + '</div>' +
+                    '<input type="text" inputmode="decimal" class="' + inputClass + '" data-index="' + i + '" value="' + formatNumber(v.displayValue) + '"' + (v.sourceCalcId ? ' readonly' : '') + '>' +
+                    '<div class="eng-calc-unit-selector' + (v.sourceCalcId ? ' disabled' : '') + '" data-index="' + i + '">' +
+                        '<button class="eng-calc-unit-btn" data-index="' + i + '"' + (v.sourceCalcId ? ' disabled' : '') + '>' + (v.sourceCalcId ? sourcePrefix + sourceUnit : prefixSym + v.unit) + '</button>';
+                if (!v.sourceCalcId) {
+                    html += '<div class="eng-calc-unit-dropdown" data-index="' + i + '">';
+                    SI_PREFIXES.forEach(function(p) {
+                        html += '<div class="eng-calc-unit-option' + (p.exp === v.prefixExp ? ' selected' : '') + '" data-index="' + i + '" data-exp="' + p.exp + '">' + p.symbol + v.unit + '</div>';
+                    });
+                    html += '</div>';
+                }
+                html += '</div>';
+                if (v.sourceCalcId) {
+                    html += '<div class="eng-calc-source-badge" data-index="' + i + '">← ' + sourceName + '</div>';
+                }
+                if (v.solve) {
+                    html += '<div class="eng-calc-result-badge">RESULT</div>';
+                }
+                html += '</div>';
+            });
+            html += '</div>' +
+                '<div class="eng-calc-result">' +
+                    '<span class="eng-calc-result-label">Result:</span> ' +
+                    '<span class="eng-calc-result-value">' + resultDisplay + '</span>' +
+                '</div>' +
+                '<div class="eng-calc-delete">' +
+                    '<button class="eng-calc-delete-btn" id="delete-calc">Delete Calculator</button>' +
+                '</div>' +
+                '</div>';
+
+            main.innerHTML = html;
+
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise([main]).catch(function(err) {
+                    console.warn('MathJax error:', err.message);
+                });
+            }
+
+            attachMainListeners();
+        }
+
+        function renderSourceSelector(varIdx, currentSourceId) {
+            var calc = calculators.find(function(c) { return c.id === activeCalcId; });
+            if (!calc) return;
+
+            var otherCalcs = calculators.filter(function(c) { return c.id !== calc.id; });
+            if (otherCalcs.length === 0) {
+                alert('No other calculators available to link. Create another calculator first.');
+                return;
+            }
+
+            var overlay = document.createElement('div');
+            overlay.className = 'eng-calc-overlay';
+            var selectorHtml = '<div class="eng-calc-source-selector">' +
+                '<div class="eng-calc-source-header">Link Variable Source</div>' +
+                '<div class="eng-calc-source-desc">Select a calculator to use its result as the value for <strong>' + calc.variables[varIdx].symbol + '</strong></div>' +
+                '<div class="eng-calc-source-list">';
+
+            otherCalcs.forEach(function(c) {
+                var resultVar = c.variables.find(function(v) { return v.solve; });
+                var resultUnit = resultVar ? resultVar.unit : '';
+                var resultVal = resultVar ? formatNumber(resultVar.displayValue) + ' ' + getPrefixSymbol(resultVar.prefixExp) + resultVar.unit : '';
+                var selected = c.id === currentSourceId ? ' selected' : '';
+                selectorHtml += '<div class="eng-calc-source-option' + selected + '" data-calc-id="' + c.id + '">' +
+                    '<div class="eng-calc-source-name">' + c.name + '</div>' +
+                    '<div class="eng-calc-source-id">' + c.id + '</div>' +
+                    '<div class="eng-calc-source-value">' + resultVal + ' (' + resultUnit + ')</div>' +
+                    '</div>';
+            });
+
+            selectorHtml += '</div>' +
+                '<div class="eng-calc-source-actions">' +
+                    '<button class="eng-calc-source-clear" data-index="' + varIdx + '">Clear Link (Manual Input)</button>' +
+                    '<button class="eng-calc-source-cancel">Cancel</button>' +
+                '</div>' +
+                '</div>';
+
+            overlay.innerHTML = selectorHtml;
+            document.body.appendChild(overlay);
+
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) overlay.remove();
+            });
+
+            var options = overlay.querySelectorAll('.eng-calc-source-option');
+            options.forEach(function(opt) {
+                opt.addEventListener('click', function() {
+                    var srcId = opt.dataset.calcId;
+                    calc.variables[varIdx].sourceCalcId = srcId;
+                    solveEquation(calc);
+                    updateDependentCalculators(calc.id);
+                    overlay.remove();
+                    renderSidebar();
+                    renderMain();
+                });
+            });
+
+            var clearBtn = overlay.querySelector('.eng-calc-source-clear');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    calc.variables[varIdx].sourceCalcId = null;
+                    solveEquation(calc);
+                    updateDependentCalculators(calc.id);
+                    overlay.remove();
+                    renderSidebar();
+                    renderMain();
+                });
+            }
+
+            var cancelBtn = overlay.querySelector('.eng-calc-source-cancel');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function() {
+                    overlay.remove();
+                });
+            }
+        }
+
+        function attachMainListeners() {
+            var calc = calculators.find(function(c) { return c.id === activeCalcId; });
+            if (!calc) return;
+
+            var nameEl = document.querySelector('[data-field="name"]');
+            if (nameEl) {
+                nameEl.addEventListener('blur', function() {
+                    var newName = nameEl.textContent.trim();
+                    if (newName) {
+                        calc.name = newName;
+                        renderSidebar();
+                    } else {
+                        nameEl.textContent = calc.name;
+                    }
+                });
+                nameEl.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
+                });
+            }
+
+            var eqSelect = document.getElementById('equation-select');
+            if (eqSelect) {
+                eqSelect.addEventListener('change', function() {
+                    var eq = findEquationById(eqSelect.value);
+                    if (eq) {
+                        var oldLinks = calc.variables.map(function(v) { return v.sourceCalcId; });
+                        var newCalc = createCalculator(eq, calc.name);
+                        for (var i = 0; i < newCalc.variables.length && i < oldLinks.length; i++) {
+                            newCalc.variables[i].sourceCalcId = oldLinks[i];
+                        }
+                        var idx = calculators.findIndex(function(c) { return c.id === calc.id; });
+                        if (idx >= 0) {
+                            calculators[idx] = newCalc;
+                            activeCalcId = newCalc.id;
+                            solveEquation(newCalc);
+                            updateDependentCalculators(newCalc.id);
+                            renderSidebar();
+                            renderMain();
+                        }
+                    }
+                });
+            }
+
+            var varSymbols = document.querySelectorAll('.eng-calc-var-symbol.clickable');
+            varSymbols.forEach(function(sym) {
+                sym.addEventListener('click', function() {
+                    var idx = parseInt(sym.dataset.index);
+                    renderSourceSelector(idx, calc.variables[idx].sourceCalcId);
+                });
+            });
+
+            var inputs = document.querySelectorAll('.eng-calc-var-input:not([readonly])');
+            inputs.forEach(function(input) {
+                var idx = parseInt(input.dataset.index);
+                var v = calc.variables[idx];
+                input.addEventListener('input', function() {
+                    var raw = input.value.replace(/,/g, '.');
+                    var val = parseFloat(raw);
+                    if (!isNaN(val)) {
+                        v.displayValue = val;
+                        v.value = val * Math.pow(10, v.prefixExp);
+                        solveEquation(calc);
+                        updateDependentCalculators(calc.id);
+                        renderSidebar();
+                    } else if (raw === '' || raw === '.' || raw === '-' || raw === '-.') {
+                        v.displayValue = 0;
+                        v.value = 0;
+                    }
+                });
+                input.addEventListener('blur', function() {
+                    input.value = formatNumber(v.displayValue);
+                    renderSidebar();
+                    renderMain();
+                });
+            });
+
+            var unitBtns = document.querySelectorAll('.eng-calc-unit-btn');
+            unitBtns.forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var idx = parseInt(btn.dataset.index);
+                    var dropdown = document.querySelector('.eng-calc-unit-dropdown[data-index="' + idx + '"]');
+                    var isOpen = dropdown.classList.contains('open');
+                    document.querySelectorAll('.eng-calc-unit-dropdown').forEach(function(d) {
+                        d.classList.remove('open');
+                    });
+                    if (!isOpen) dropdown.classList.add('open');
+                });
+            });
+
+            var unitOptions = document.querySelectorAll('.eng-calc-unit-option');
+            unitOptions.forEach(function(opt) {
+                opt.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var idx = parseInt(opt.dataset.index);
+                    var newExp = parseInt(opt.dataset.exp);
+                    var v = calc.variables[idx];
+                    var oldFactor = Math.pow(10, v.prefixExp);
+                    var newFactor = Math.pow(10, newExp);
+                    v.value = v.displayValue * oldFactor;
+                    v.prefixExp = newExp;
+                    v.displayValue = v.value / newFactor;
+                    document.querySelectorAll('.eng-calc-unit-dropdown').forEach(function(d) { d.classList.remove('open'); });
+                    solveEquation(calc);
+                    updateDependentCalculators(calc.id);
+                    renderSidebar();
+                    renderMain();
+                });
+            });
+
+            var sourceBadges = document.querySelectorAll('.eng-calc-source-badge');
+            sourceBadges.forEach(function(badge) {
+                badge.addEventListener('click', function() {
+                    var idx = parseInt(badge.dataset.index);
+                    renderSourceSelector(idx, calc.variables[idx].sourceCalcId);
+                });
+            });
+
+            var deleteBtn = document.getElementById('delete-calc');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', function() {
+                    var idx = calculators.findIndex(function(c) { return c.id === activeCalcId; });
+                    if (idx >= 0) {
+                        var deletedId = calculators[idx].id;
+                        calculators.splice(idx, 1);
+                        calculators.forEach(function(c) {
+                            c.variables.forEach(function(v) {
+                                if (v.sourceCalcId === deletedId) {
+                                    v.sourceCalcId = null;
+                                }
+                            });
+                        });
+                        activeCalcId = calculators.length > 0 ? calculators[0].id : null;
+                        calculators.forEach(function(c) { solveEquation(c); });
+                        renderSidebar();
+                        renderMain();
+                    }
+                });
+            }
+        }
+
+        function closeDropdowns(e) {
+            if (!e.target.closest('.eng-calc-unit-selector') && !e.target.closest('.eng-calc-source-selector') && !e.target.closest('.eng-calc-overlay')) {
+                document.querySelectorAll('.eng-calc-unit-dropdown').forEach(function(d) { d.classList.remove('open'); });
+            }
+        }
+
+        function initAddButton() {
+            document.getElementById('add-calculator').addEventListener('click', function() {
+                var firstEq = null;
+                var cats = Object.keys(EQUATIONS);
+                if (cats.length > 0 && EQUATIONS[cats[0]].length > 0) {
+                    firstEq = EQUATIONS[cats[0]][0];
+                }
+                if (firstEq) {
+                    var calc = createCalculator(firstEq);
+                    solveEquation(calc);
+                    calculators.push(calc);
+                    activeCalcId = calc.id;
+                    renderSidebar();
+                    renderMain();
+                }
+            });
+        }
+
+        function initSaveLoad() {
+            document.getElementById('save-btn').addEventListener('click', function() {
+                var data = {
+                    calculators: calculators.map(function(c) {
+                        return {
+                            id: c.id,
+                            name: c.name,
+                            equationId: c.equationId,
+                            equationName: c.equationName,
+                            formula: c.formula,
+                            latex: c.latex,
+                            resultUnit: c.resultUnit,
+                            variables: c.variables.map(function(v) {
+                                return {
+                                    symbol: v.symbol, name: v.name, unit: v.unit,
+                                    value: v.value, displayValue: v.displayValue,
+                                    prefixExp: v.prefixExp, solve: v.solve,
+                                    sourceCalcId: v.sourceCalcId
+                                };
+                            })
+                        };
+                    }),
+                    nextId: nextId
+                };
+                var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'calculators.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            document.getElementById('load-btn').addEventListener('click', function() {
+                document.getElementById('file-input').click();
+            });
+
+            document.getElementById('file-input').addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function(ev) {
+                    try {
+                        var data = JSON.parse(ev.target.result);
+                        if (data.calculators && Array.isArray(data.calculators)) {
+                            calculators = data.calculators;
+                            if (data.nextId) nextId = data.nextId;
+                            activeCalcId = calculators.length > 0 ? calculators[0].id : null;
+                            calculators.forEach(function(c) { solveEquation(c); });
+                            renderSidebar();
+                            renderMain();
+                        }
+                    } catch (err) {
+                        alert('Failed to load file: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            });
+        }
+
+        var defaultEq = findEquationById('lc-tank');
+        if (defaultEq) {
+            var defCalc = createCalculator(defaultEq);
+            solveEquation(defCalc);
+            calculators.push(defCalc);
+            activeCalcId = defCalc.id;
+        }
+
+        renderSidebar();
+        renderMain();
+        initAddButton();
+        initSaveLoad();
+
+        document.addEventListener('click', closeDropdowns);
+
+        if (!window.MathJax || !window.MathJax.typesetPromise) {
+            document.getElementById('MathJax-script').addEventListener('load', function() {
+                if (activeCalcId) renderMain();
+            });
+        }
+    })();
     </script>
 </body>
 </html>

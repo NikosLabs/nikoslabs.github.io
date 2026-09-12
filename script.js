@@ -7,6 +7,9 @@ const ARTICLE_IDS = ['beauty-of-interstellar', 'am-radio', 'voltage-divider-expl
 // Featured article IDs — shown in the "Featured Articles" section (subset of ARTICLE_IDS)
 const FEATURED_ARTICLE_IDS = ['beauty-of-interstellar', 'am-radio'];
 
+// Hidden tags — articles with these tags are hidden from the front page
+const HIDDEN_TAGS = ['voltage-divider', 'interstellar', 'am-radio'];
+
 // Global articles data
 let allArticles = [];
 let currentFilter = null;
@@ -129,20 +132,32 @@ async function loadArticles() {
         const featured = sorted.filter(a => FEATURED_ARTICLE_IDS.includes(a.id));
         const featuredContainer = document.getElementById('featured-articles');
         if (featuredContainer) {
-            if (featured.length === 0) {
-                featuredContainer.innerHTML = '<p style="text-align: center; color: #999;">No featured articles yet.</p>';
+            // Filter out articles with hidden tags
+            const visibleFeatured = featured.filter(a => {
+                if (!a.tags || a.tags.length === 0) return true;
+                return !a.tags.some(tag => HIDDEN_TAGS.includes(tag));
+            });
+
+            if (visibleFeatured.length === 0) {
+                featuredContainer.innerHTML = '<p style="text-align: center; color: #999; font-size: 1.1rem; padding: 2rem;">No featured articles published yet; check back soon!</p>';
             } else {
-                featuredContainer.innerHTML = renderArticleCards(featured);
+                featuredContainer.innerHTML = renderArticleCards(visibleFeatured);
             }
         }
 
         // Render all articles
         const allContainer = document.getElementById('all-articles-list');
         if (allContainer) {
-            if (sorted.length === 0) {
-                allContainer.innerHTML = '<p style="text-align: center; color: #999;">No articles yet.</p>';
+            // Filter out articles with hidden tags
+            const visible = sorted.filter(a => {
+                if (!a.tags || a.tags.length === 0) return true;
+                return !a.tags.some(tag => HIDDEN_TAGS.includes(tag));
+            });
+
+            if (visible.length === 0) {
+                allContainer.innerHTML = '<p style="text-align: center; color: #999; font-size: 1.1rem; padding: 2rem;">No articles published yet; check back soon!</p>';
             } else {
-                allContainer.innerHTML = renderArticleCards(sorted);
+                allContainer.innerHTML = renderArticleCards(visible);
             }
         }
     } catch (error) {
@@ -348,17 +363,35 @@ async function loadArticle() {
         htmlContent = htmlContent.replace(
             new RegExp('<blockquote>\\s*<p>\\[!(' + alertTypes + ')\\]</p>([\\s\\S]*?)</blockquote>', 'gi'),
             (match, type, body) =>
-                `<blockquote class="notice notice-${type.toLowerCase()}">${body.trim()}</blockquote>`
+                `<blockquote class="notice notice-${type.toLowerCase()}">${body.replace(/<br\s*\/?>/gi, '\n')}</blockquote>`
         );
 
-        // Case 2: same paragraph — <p>[!TYPE]\nText</p>
+        // Case 2: same paragraph — <p>[!TYPE]<br>Text</p> or <p>[!TYPE]\nText</p>
         htmlContent = htmlContent.replace(
-            new RegExp('<blockquote>\\s*<p>\\[!(' + alertTypes + ')\\]\\s*([\\s\\S]*?)</p>([\\s\\S]*?)</blockquote>', 'gi'),
+            new RegExp('<blockquote>\\s*<p>\\[!(' + alertTypes + ')\\]\\s*(?:<br\\s*\\/?>\\s*)?([\\s\\S]*?)</p>([\\s\\S]*?)</blockquote>', 'gi'),
             (match, type, firstP, rest) => {
-                const content = firstP.trim();
-                let body = content ? `<p>${content}</p>` : '';
-                if (rest) body += rest;
+                let content = firstP.replace(/<br\s*\/?>/gi, '\n').trim();
+                let body = content ? content : '';
+                if (rest) {
+                    body += rest.replace(/<br\s*\/?>/gi, '\n');
+                }
                 return `<blockquote class="notice notice-${type.toLowerCase()}">${body.trim()}</blockquote>`;
+            }
+        );
+
+        // Case 3: multi-line blockquote with [!TYPE] and content separated by <br>
+        htmlContent = htmlContent.replace(
+            new RegExp('<blockquote>\\s*<p>\\[!(' + alertTypes + ')\\]<br\\s*\\/?>([\\s\\S]*?)</p>\\s*</blockquote>', 'gi'),
+            (match, type, body) => {
+                return `<blockquote class="notice notice-${type.toLowerCase()}">${body.replace(/<br\s*\/?>/gi, '\n').trim()}</blockquote>`;
+            }
+        );
+
+        // Convert newlines inside notice blockquotes to <br> for proper rendering
+        htmlContent = htmlContent.replace(
+            /<blockquote class="notice[^"]*">([\s\S]*?)<\/blockquote>/gi,
+            (match, body) => {
+                return match.replace(body, body.replace(/\n/g, '<br>'));
             }
         );
 
