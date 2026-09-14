@@ -540,7 +540,7 @@
                     }
                 }
                 html += '<div class="eng-calc-var-row' + (v.solve ? ' solve' : '') + linkedClass + '">' +
-                    '<div class="eng-calc-var-symbol' + (v.solve || v.sourceCalcId ? '' : ' clickable') + '" data-index="' + i + '">' + v.symbol + '</div>' +
+                    '<div class="eng-calc-var-symbol' + (v.solve || v.sourceCalcId ? '' : ' clickable') + '" data-index="' + i + '">\\(' + v.symbol + '\\)</div>' +
                     '<input type="text" inputmode="decimal" class="' + inputClass + '" data-index="' + i + '" value="' + formatNumber(v.displayValue) + '"' + (v.sourceCalcId ? ' readonly' : '') + '>' +
                     '<div class="eng-calc-unit-selector' + (v.sourceCalcId ? ' disabled' : '') + '" data-index="' + i + '">' +
                         '<button class="eng-calc-unit-btn" data-index="' + i + '"' + (v.sourceCalcId ? ' disabled' : '') + '>' + (v.sourceCalcId ? sourcePrefix + sourceUnit : prefixSym + v.unit) + '</button>';
