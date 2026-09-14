@@ -5,6 +5,7 @@ author: DemodulatedWave
 tags: Circuits, Analog, Electronics, Theory
 description: Deep dive into voltage divider circuits, calculations, and practical applications in analog signal conditioning.
 image: assets/placeholder.jpg
+hidden: true
 ---
 
 # Understanding Voltage Dividers

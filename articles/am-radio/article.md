@@ -5,6 +5,7 @@ author: DemodulatedWave
 tags: Radio, AM, Intermediate, Analog, Tutorial, RF, Theory
 description: A guide to build a simple AM radio receiver.
 image: assets/placeholder.jpg
+hidden: true
 ---
 
 # Getting Started: AM Radio

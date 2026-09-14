@@ -5,6 +5,7 @@ author: Niko
 tags: Movie, Interstellar, Opinion
 description: My takes on Interstellar by Christopher Nolan
 image: assets/interstellar.jpg
+hidden: true
 ---
 
 > [!NOTE]

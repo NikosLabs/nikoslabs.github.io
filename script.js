@@ -7,8 +7,7 @@ const ARTICLE_IDS = ['beauty-of-interstellar', 'am-radio', 'voltage-divider-expl
 // Featured article IDs — shown in the "Featured Articles" section (subset of ARTICLE_IDS)
 const FEATURED_ARTICLE_IDS = ['beauty-of-interstellar', 'am-radio'];
 
-// Hidden tags — articles with these tags are hidden from the front page
-const HIDDEN_TAGS = ['voltage-divider', 'interstellar', 'am-radio'];
+// Hidden articles — articles with `hidden: true` in frontmatter are hidden from the front page
 
 // Global articles data
 let allArticles = [];
@@ -114,7 +113,8 @@ async function loadArticles() {
                     date: metadata.date || '',
                     excerpt: excerpt,
                     tags: tags,
-                    image: metadata.image || ''
+                    image: metadata.image || '',
+                    hidden: metadata.hidden || 'false'
                 };
             } catch (error) {
                 console.error(`Error loading article ${id}:`, error);
@@ -132,14 +132,11 @@ async function loadArticles() {
         const featured = sorted.filter(a => FEATURED_ARTICLE_IDS.includes(a.id));
         const featuredContainer = document.getElementById('featured-articles');
         if (featuredContainer) {
-            // Filter out articles with hidden tags
-            const visibleFeatured = featured.filter(a => {
-                if (!a.tags || a.tags.length === 0) return true;
-                return !a.tags.some(tag => HIDDEN_TAGS.includes(tag));
-            });
+            // Filter out hidden articles
+            const visibleFeatured = featured.filter(a => a.hidden !== 'true');
 
             if (visibleFeatured.length === 0) {
-                featuredContainer.innerHTML = '<p style="text-align: center; color: #999; font-size: 1.1rem; padding: 2rem;">No featured articles published yet; check back soon!</p>';
+                featuredContainer.innerHTML = '<p style="text-align: center; color: #999; font-size: 1.1rem; padding: 2rem;">No articles yet; stay tuned!</p>';
             } else {
                 featuredContainer.innerHTML = renderArticleCards(visibleFeatured);
             }
@@ -148,14 +145,11 @@ async function loadArticles() {
         // Render all articles
         const allContainer = document.getElementById('all-articles-list');
         if (allContainer) {
-            // Filter out articles with hidden tags
-            const visible = sorted.filter(a => {
-                if (!a.tags || a.tags.length === 0) return true;
-                return !a.tags.some(tag => HIDDEN_TAGS.includes(tag));
-            });
+            // Filter out hidden articles
+            const visible = sorted.filter(a => a.hidden !== 'true');
 
             if (visible.length === 0) {
-                allContainer.innerHTML = '<p style="text-align: center; color: #999; font-size: 1.1rem; padding: 2rem;">No articles published yet; check back soon!</p>';
+                allContainer.innerHTML = '<p style="text-align: center; color: #999; font-size: 1.1rem; padding: 2rem;">No articles yet; stay tuned!</p>';
             } else {
                 allContainer.innerHTML = renderArticleCards(visible);
             }
