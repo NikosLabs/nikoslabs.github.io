@@ -2,10 +2,10 @@
 const ARTICLES_DIR = 'articles';
 
 // Published article IDs — add a new ID here whenever you publish a post
-const ARTICLE_IDS = ['beauty-of-interstellar', 'am-radio', 'voltage-divider-explained'];
+const ARTICLE_IDS = ['laser-am-radio', 'beauty-of-interstellar', 'am-radio', 'voltage-divider-explained'];
 
 // Featured article IDs — shown in the "Featured Articles" section (subset of ARTICLE_IDS)
-const FEATURED_ARTICLE_IDS = ['beauty-of-interstellar', 'am-radio'];
+const FEATURED_ARTICLE_IDS = ['laser-am-radio', 'beauty-of-interstellar', 'am-radio'];
 
 // Hidden articles — articles with `hidden: true` in frontmatter are hidden from the front page
 
@@ -237,11 +237,13 @@ function performSearch(query) {
     
     // Find articles with matching tags (prioritized)
     const tagMatchArticles = allArticles.filter(article => 
+        article.hidden !== 'true' &&
         (article.tags || []).some(tag => tag.toLowerCase().includes(lowerQuery))
     );
     
     // Find articles with matching content
     const contentMatchArticles = allArticles.filter(article => 
+        article.hidden !== 'true' &&
         !tagMatchArticles.includes(article) && (
             article.title.toLowerCase().includes(lowerQuery) ||
             article.excerpt.toLowerCase().includes(lowerQuery)
@@ -327,6 +329,13 @@ async function loadArticle() {
             if (dateEl) dateEl.textContent = formatDate(metadata.date);
         }
 
+        if (metadata.author) {
+            const authorEl = document.getElementById('article-author');
+            const bulletEl = document.getElementById('article-author-bullet');
+            if (authorEl) authorEl.textContent = metadata.author;
+            if (bulletEl) bulletEl.style.display = 'inline';
+        }
+
         // Parse and display tags
         if (metadata.tags) {
             const tags = parseTags(metadata.tags);
@@ -336,8 +345,17 @@ async function loadArticle() {
             }
         }
 
-        // Display article image (if set in frontmatter)
-        if (metadata.image) {
+        // Prefer an article cover video, with the image retained as its poster fallback.
+        if (metadata.video) {
+            const videoEl = document.getElementById('article-video');
+            if (videoEl) {
+                videoEl.src = metadata.video;
+                videoEl.poster = metadata.image || '';
+                videoEl.setAttribute('aria-label', metadata.title || 'Article cover video');
+                videoEl.classList.add('visible');
+                videoEl.load();
+            }
+        } else if (metadata.image) {
             const imgEl = document.getElementById('article-image');
             if (imgEl) {
                 imgEl.src = metadata.image;
@@ -390,6 +408,8 @@ async function loadArticle() {
         );
 
         contentDiv.innerHTML = htmlContent;
+        initializeArticleImageZoom(contentDiv);
+        initializeVideoGain(document);
         
         // Render LaTeX with MathJax
         setTimeout(() => {
@@ -405,6 +425,64 @@ async function loadArticle() {
             contentDiv.innerHTML = '<p>Error loading article. <a href="index.html">Return to home</a></p>';
         }
     }
+}
+
+function initializeVideoGain(root) {
+    root.querySelectorAll('video[data-audio-gain]').forEach(video => {
+        if (video.dataset.gainReady) return;
+        video.dataset.gainReady = 'true';
+
+        video.addEventListener('play', () => {
+            if (!video._gainContext) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const context = new AudioContext();
+                const source = context.createMediaElementSource(video);
+                const gain = context.createGain();
+                gain.gain.value = Number(video.dataset.audioGain) || 2;
+                source.connect(gain).connect(context.destination);
+                video._gainContext = context;
+            }
+            if (video._gainContext.state === 'suspended') video._gainContext.resume();
+        });
+    });
+}
+
+// Add a cursor-following magnifier to marked article images.
+function initializeArticleImageZoom(root) {
+    if (!root || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+    root.querySelectorAll('.article-image-zoom').forEach(zoom => {
+        const image = zoom.querySelector('img');
+        const zoomImage = zoom.dataset.zoomImage || (image && image.src);
+        if (!image || !zoomImage) return;
+
+        const lens = document.createElement('div');
+        lens.className = 'article-zoom-lens';
+        lens.style.backgroundImage = `url("${zoomImage}")`;
+        zoom.appendChild(lens);
+
+        zoom.addEventListener('mouseenter', () => {
+            zoom.classList.add('is-zooming');
+        });
+
+        zoom.addEventListener('mousemove', event => {
+            const rect = image.getBoundingClientRect();
+            const x = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
+            const y = Math.max(0, Math.min(event.clientY - rect.top, rect.height));
+            const lensWidth = lens.offsetWidth;
+            const lensHeight = lens.offsetHeight;
+
+            lens.style.left = `${Math.max(0, Math.min(x - lensWidth / 2, rect.width - lensWidth))}px`;
+            lens.style.top = `${Math.max(0, Math.min(y - lensHeight / 2, rect.height - lensHeight))}px`;
+            lens.style.backgroundSize = `${rect.width * 2.75}px ${rect.height * 2.75}px`;
+            lens.style.backgroundPosition = `${(x / rect.width) * 100}% ${(y / rect.height) * 100}%`;
+        });
+
+        zoom.addEventListener('mouseleave', () => {
+            zoom.classList.remove('is-zooming');
+        });
+    });
 }
 
 // Initialize search functionality

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Article - Niko's Lab</title>
-    <link rel="icon" href="/favicon.ico">
-    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    <link rel="stylesheet" href="style.css?v=20260920-4">
     <script src="lib/marked.min.js"></script>
     <script src="lib/mathjax.js"></script>
 </head>
@@ -19,7 +19,8 @@
             <article class="article-container">
                 <div class="article-header">
                     <h1 id="article-title">Loading...</h1>
-                    <p class="article-meta">Published: <span id="article-date">—</span></p>
+                    <p class="article-meta">Published: <span id="article-date">—</span><span id="article-author-bullet" style="display:none;"> • </span>By <span id="article-author">—</span></p>
+                    <video id="article-video" class="article-video" controls playsinline preload="auto" data-audio-gain="4"></video>
                     <img id="article-image" class="article-image" alt="" src="">
                     <div id="article-tags" class="article-tags"></div>
                 </div>
@@ -32,6 +33,6 @@
 
     <div id="site-footer-placeholder"></div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=20260920-5"></script>
 </body>
 </html>

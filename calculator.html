@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Engineer's Calculator - Niko's Lab</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    <link rel="stylesheet" href="style.css?v=20260920-4">
     <script>
         window.MathJax = {
             tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
@@ -561,10 +562,6 @@
                 html += '</div>';
             });
             html += '</div>' +
-                '<div class="eng-calc-result">' +
-                    '<span class="eng-calc-result-label">Result:</span> ' +
-                    '<span class="eng-calc-result-value">' + resultDisplay + '</span>' +
-                '</div>' +
                 '<div class="eng-calc-delete">' +
                     '<button class="eng-calc-delete-btn" id="delete-calc">Delete Calculator</button>' +
                 '</div>' +
@@ -756,9 +753,17 @@
                     var v = calc.variables[idx];
                     var oldFactor = Math.pow(10, v.prefixExp);
                     var newFactor = Math.pow(10, newExp);
-                    v.value = v.displayValue * oldFactor;
-                    v.prefixExp = newExp;
-                    v.displayValue = v.value / newFactor;
+                    if (v.solve) {
+                        // A result-unit change is only a display conversion.
+                        v.value = v.displayValue * oldFactor;
+                        v.prefixExp = newExp;
+                        v.displayValue = v.value / newFactor;
+                    } else {
+                        // For an input, keep the entered number and apply the new unit.
+                        // Example: changing 0.1 mH to 0.1 H changes the physical value.
+                        v.prefixExp = newExp;
+                        v.value = v.displayValue * newFactor;
+                    }
                     document.querySelectorAll('.eng-calc-unit-dropdown').forEach(function(d) { d.classList.remove('open'); });
                     solveEquation(calc);
                     updateDependentCalculators(calc.id);
