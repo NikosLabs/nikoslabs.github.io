@@ -22,7 +22,7 @@ Generally, basic music-over-visible-light systems directly inject audio into a l
 
 ## Demo Video
 
-<video class="article-inline-video" src="assets/laser-radio/demovid.mp4" controls playsinline preload="metadata" data-audio-gain="4" aria-label="Laser radio demonstration video">
+<video class="article-inline-video" src="assets/laser-radio/demovid.mp4" controls playsinline preload="metadata" data-audio-gain="4" poster="assets/laser-radio/coverForDemo.png" aria-label="Laser radio demonstration video">
   Your browser does not support embedded video.
 </video>
 
