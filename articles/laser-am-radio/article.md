@@ -17,9 +17,6 @@ I decided that I wanted to somehow use a laser beam to transmit music. I knew ho
 
 Generally, basic music-over-visible-light systems directly inject audio into a laser or flashlight and receive it with a solar panel or photodiode. The problem with this is that many modern lights flicker at 60-120 Hz, which can turn into audible noise. My goal was to use a carrier wave so I could isolate my signal from environmental noise and amplitude-modulate it using AM-radio techniques.
 
-> [!IMPORTANT]
-> **Laser safety:** Never look into a laser beam or aim it at people, animals, vehicles, or aircraft! Use proper eye protection, control any reflections, and keep the beam path contained while aligning and testing the system.
-
 ## Demo Video
 
 <video class="article-inline-video" src="assets/laser-radio/demovid.mp4" controls playsinline preload="metadata" data-audio-gain="4" poster="assets/laser-radio/coverForDemo.png" aria-label="Laser radio demonstration video">
