@@ -860,7 +860,7 @@ body {
 
 @media (hover: none), (pointer: coarse) {
     .article-image-zoom { cursor: default; }
-    .article-zoom-lens { display: none !important; }
+    .article-image-zoom.is-zooming { cursor: zoom-in; }
 }
 
 .article-diagram figcaption {

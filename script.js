@@ -345,12 +345,12 @@ async function loadArticle() {
             }
         }
 
-        // Prefer an article cover video, with the image retained as its poster fallback.
+        // Prefer an article cover video and show its first frame without a poster image.
         if (metadata.video) {
             const videoEl = document.getElementById('article-video');
             if (videoEl) {
                 videoEl.src = metadata.video;
-                videoEl.poster = metadata.image || '';
+                videoEl.removeAttribute('poster');
                 videoEl.setAttribute('aria-label', metadata.title || 'Article cover video');
                 videoEl.classList.add('visible');
                 videoEl.load();
@@ -450,7 +450,7 @@ function initializeVideoGain(root) {
 
 // Add a cursor-following magnifier to marked article images.
 function initializeArticleImageZoom(root) {
-    if (!root || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    if (!root) return;
 
     root.querySelectorAll('.article-image-zoom').forEach(zoom => {
         const image = zoom.querySelector('img');
@@ -462,11 +462,10 @@ function initializeArticleImageZoom(root) {
         lens.style.backgroundImage = `url("${zoomImage}")`;
         zoom.appendChild(lens);
 
-        zoom.addEventListener('mouseenter', () => {
+        // Detect the active input so iPads can use a connected mouse or trackpad.
+        zoom.addEventListener('pointermove', event => {
+            if (event.pointerType !== 'mouse') return;
             zoom.classList.add('is-zooming');
-        });
-
-        zoom.addEventListener('mousemove', event => {
             const rect = image.getBoundingClientRect();
             const x = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
             const y = Math.max(0, Math.min(event.clientY - rect.top, rect.height));
@@ -479,7 +478,15 @@ function initializeArticleImageZoom(root) {
             lens.style.backgroundPosition = `${(x / rect.width) * 100}% ${(y / rect.height) * 100}%`;
         });
 
-        zoom.addEventListener('mouseleave', () => {
+        zoom.addEventListener('pointerdown', event => {
+            if (event.pointerType !== 'mouse') zoom.classList.remove('is-zooming');
+        });
+
+        zoom.addEventListener('pointercancel', () => {
+            zoom.classList.remove('is-zooming');
+        });
+
+        zoom.addEventListener('pointerleave', () => {
             zoom.classList.remove('is-zooming');
         });
     });
